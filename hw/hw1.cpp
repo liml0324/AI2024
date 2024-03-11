@@ -70,6 +70,7 @@ void BFS_search(tuple<int, int, int> init_state, vector<tuple<int, int, int>> & 
             }
             prev[next_state] = state;
             q.push(next_state);
+            // cout << "(" << get<0>(next_state) << ", " << get<1>(next_state) << ", " << get<2>(next_state) << ")" << endl;
         }
     }
     auto state = goal_state;
