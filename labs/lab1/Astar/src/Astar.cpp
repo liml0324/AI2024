@@ -183,8 +183,9 @@ void Astar_search(const string input_file, int &step_nums, string &way)
     step_nums = end_cell->g;
     Map_Cell *temp = end_cell->map_cell;
     
-    while(parent[temp->i][temp->j].first != -1) {
+    while(temp->type != 3) {
         way.push_back(end_cell->action);
+        temp = &Map[parent[temp->i][temp->j].first][parent[temp->i][temp->j].second];
     }
     reverse(way.begin(), way.end());
 
