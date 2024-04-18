@@ -34,17 +34,19 @@ struct CompareF {
 };
 
 // TODO: 定义启发式函数
-void Heuristic_Funtion()
+int Heuristic_Funtion(Map_Cell **Map, Search_Cell *search_cell, pair<int, int> start_point, pair<int, int> end_point)
 {
-    return;
+    return abs(search_cell->map_cell->i - end_point.first) + abs(search_cell->map_cell->j - end_point.second);
+    // return 0;
 }
 
-void Astar_search(const string input_file, int &step_nums, string &way)
+int Astar_search(const string input_file, int &step_nums, string &way)
 {
+    int times = 0;
     ifstream file(input_file);
     if (!file.is_open()) {
         cout << "Error opening file!" << endl;
-        return;
+        return times;
     }
 
     string line;
@@ -93,21 +95,25 @@ void Astar_search(const string input_file, int &step_nums, string &way)
 
     Search_Cell *search_cell = new Search_Cell;
     search_cell->g = 0;
-    search_cell->h = 0; // Heuristic_Funtion();
     search_cell->map_cell = &Map[start_point.first][start_point.second];
+    //cout << search_cell->map_cell->i << " " << search_cell->map_cell->j << endl;
     search_cell->t = T;
+    search_cell->h = Heuristic_Funtion(Map, search_cell, start_point, end_point); // Heuristic_Funtion();
 
     priority_queue<Search_Cell *, vector<Search_Cell *>, CompareF> open_list;
     // vector<Search_Cell *> close_list;
-    vector<vector<pair<int, int>>> parent = vector<vector<pair<int, int>>>(M, vector<pair<int, int>>(N, {-1, -1}));
+    vector<vector<Search_Cell *>> parent = vector<vector<Search_Cell *>>(M, vector<Search_Cell *>(N, nullptr));
+    parent[start_point.first][start_point.second] = search_cell;
     open_list.push(search_cell);
-    Search_Cell *end_cell;
+    Search_Cell *end_cell = nullptr;
 
     while(!open_list.empty())
     {
         // TODO: A*搜索过程实现
+        times++;
         Search_Cell *current_cell = open_list.top();
         open_list.pop();
+        //cout << current_cell->map_cell->i << " " << current_cell->map_cell->j << " " << current_cell->g << " " << current_cell->t << endl;
         // close_list.push_back(current_cell);
         if(current_cell->map_cell->type == 4)
         {
@@ -124,68 +130,73 @@ void Astar_search(const string input_file, int &step_nums, string &way)
         {
             continue;
         }
-        if(current_cell->map_cell->i > 0 && \
+        if( current_cell->map_cell->i > 0 && \
             Map[current_cell->map_cell->i - 1][current_cell->map_cell->j].type != 1 && \
-            parent[current_cell->map_cell->i - 1][current_cell->map_cell->j].first != -1)// 可以向上搜索
+            parent[current_cell->map_cell->i - 1][current_cell->map_cell->j] == nullptr)// 可以向上搜索
         {
             Search_Cell *up_cell = new Search_Cell;
             up_cell->g = current_cell->g + 1;
-            up_cell->h = 0; // Heuristic_Funtion();
             up_cell->map_cell = &Map[current_cell->map_cell->i - 1][current_cell->map_cell->j];
             up_cell->t = current_cell->t - 1;
             up_cell->action = 'U';
+            up_cell->h = Heuristic_Funtion(Map, up_cell, start_point, end_point); // Heuristic_Funtion();
             open_list.push(up_cell);
-            parent[up_cell->map_cell->i][up_cell->map_cell->j] = {current_cell->map_cell->i, current_cell->map_cell->j};
+            parent[up_cell->map_cell->i][up_cell->map_cell->j] = current_cell;
         }
         if(current_cell->map_cell->i < M - 1 && \
             Map[current_cell->map_cell->i + 1][current_cell->map_cell->j].type != 1 && \
-            parent[current_cell->map_cell->i + 1][current_cell->map_cell->j].first != -1)// 可以向下搜索
+            parent[current_cell->map_cell->i + 1][current_cell->map_cell->j] == nullptr)// 可以向下搜索
         {
             Search_Cell *down_cell = new Search_Cell;
             down_cell->g = current_cell->g + 1;
-            down_cell->h = 0; // Heuristic_Funtion();
             down_cell->map_cell = &Map[current_cell->map_cell->i + 1][current_cell->map_cell->j];
             down_cell->t = current_cell->t - 1;
             down_cell->action = 'D';
+            down_cell->h = Heuristic_Funtion(Map, down_cell, start_point, end_point); // Heuristic_Funtion();
             open_list.push(down_cell);
-            parent[down_cell->map_cell->i][down_cell->map_cell->j] = {current_cell->map_cell->i, current_cell->map_cell->j};
+            parent[down_cell->map_cell->i][down_cell->map_cell->j] = current_cell;
         }
         if(current_cell->map_cell->j > 0 && \
             Map[current_cell->map_cell->i][current_cell->map_cell->j - 1].type != 1 && \
-            parent[current_cell->map_cell->i][current_cell->map_cell->j - 1].first != -1)// 可以向左搜索
+            parent[current_cell->map_cell->i][current_cell->map_cell->j - 1] == nullptr)// 可以向左搜索
         {
             Search_Cell *left_cell = new Search_Cell;
             left_cell->g = current_cell->g + 1;
-            left_cell->h = 0; // Heuristic_Funtion();
             left_cell->map_cell = &Map[current_cell->map_cell->i][current_cell->map_cell->j - 1];
             left_cell->t = current_cell->t - 1;
             left_cell->action = 'L';
+            left_cell->h = Heuristic_Funtion(Map, left_cell, start_point, end_point); // Heuristic_Funtion();
             open_list.push(left_cell);
-            parent[left_cell->map_cell->i][left_cell->map_cell->j] = {current_cell->map_cell->i, current_cell->map_cell->j};
+            parent[left_cell->map_cell->i][left_cell->map_cell->j] = current_cell;
         }
         if(current_cell->map_cell->j < N - 1 && \
             Map[current_cell->map_cell->i][current_cell->map_cell->j + 1].type != 1 && \
-            parent[current_cell->map_cell->i][current_cell->map_cell->j + 1].first != -1)// 可以向右搜索
+            parent[current_cell->map_cell->i][current_cell->map_cell->j + 1] == nullptr)// 可以向右搜索
         {
             Search_Cell *right_cell = new Search_Cell;
             right_cell->g = current_cell->g + 1;
-            right_cell->h = 0; // Heuristic_Funtion();
             right_cell->map_cell = &Map[current_cell->map_cell->i][current_cell->map_cell->j + 1];
             right_cell->t = current_cell->t - 1;
             right_cell->action = 'R';
+            right_cell->h = Heuristic_Funtion(Map, right_cell, start_point, end_point); // Heuristic_Funtion();
             open_list.push(right_cell);
-            parent[right_cell->map_cell->i][right_cell->map_cell->j] = {current_cell->map_cell->i, current_cell->map_cell->j};
+            parent[right_cell->map_cell->i][right_cell->map_cell->j] = current_cell;
         }
     }
+    // cout << "finish search" << endl;
 
     // ------------------------------------------------------------------
     // TODO: 填充step_nums与way
+    if(end_cell == nullptr)
+    {
+        step_nums = -1;
+        return times;
+    }
     step_nums = end_cell->g;
-    Map_Cell *temp = end_cell->map_cell;
     
-    while(temp->type != 3) {
+    while(end_cell->map_cell->type != 3) {
         way.push_back(end_cell->action);
-        temp = &Map[parent[temp->i][temp->j].first][parent[temp->i][temp->j].second];
+        end_cell = parent[end_cell->map_cell->i][end_cell->map_cell->j];
     }
     reverse(way.begin(), way.end());
 
@@ -207,7 +218,7 @@ void Astar_search(const string input_file, int &step_nums, string &way)
     //     delete[] close_list[i];
     // }
     delete[] search_cell;
-    return;
+    return times;
 }
 
 void output(const string output_file, int &step_nums, string &way)
@@ -239,8 +250,9 @@ int main(int argc, char *argv[])
     {
         int step_nums = -1;
         string way = "";
-        Astar_search(input_base + to_string(i) + ".txt", step_nums, way);
+        Astar_search(input_base + to_string(i) + ".txt", step_nums, way) << ' ';
         output(output_base + to_string(i) + ".txt", step_nums, way);
     }
+    cout << endl;
     return 0;
 }
