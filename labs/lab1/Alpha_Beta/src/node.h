@@ -137,6 +137,41 @@ namespace ChineseChess
         std::vector<Move> red_moves;    //红方棋子的合法动作
         std::vector<Move> black_moves;   //黑方棋子的合法动作
     public:
+        std::string getPieceName(char pieceChar) {
+            switch (pieceChar) {
+                case 'R':
+                    return "Ju";
+                case 'C':
+                    return "Pao";
+                case 'N':
+                    return "Ma";
+                case 'B':
+                    return "Xiang";
+                case 'A':
+                    return "Shi";
+                case 'K':
+                    return "Jiang";
+                case 'P':
+                    return "Bing";
+                case 'r':
+                    return "Ju";
+                case 'c':
+                    return "Pao";
+                case 'n':
+                    return "Ma";
+                case 'b':
+                    return "Xiang";
+                case 'a':
+                    return "Shi";
+                case 'k':
+                    return "Jiang";
+                case 'p':
+                    return "Bing";
+                default:
+                    return "";
+            }
+        }
+
         // 初始化棋盘，提取棋盘上棋子，并生成所有合法动作
         void initializeBoard(const std::vector<std::vector<char>>& init_board) {
             board = init_board;
@@ -149,6 +184,7 @@ namespace ChineseChess
                     if (pieceChar == '.') continue;
 
                     ChessPiece piece;
+                    // 这里做了一个转置，x是横坐标，y是纵坐标
                     piece.init_x = j;
                     piece.init_y = i;
                     piece.color = (pieceChar >= 'A' && pieceChar <= 'Z');
@@ -157,46 +193,46 @@ namespace ChineseChess
 
                     switch (pieceChar) {
                         case 'R':
-                            generateJuMoves(i, j, piece.color);
+                            generateJuMoves(j, i, piece.color);
                             break;
                         case 'C':
-                            generatePaoMoves(i, j, piece.color);
+                            generatePaoMoves(j, i, piece.color);
                             break;
                         case 'N':
-                            generateMaMoves(i, j, piece.color);
+                            generateMaMoves(j, i, piece.color);
                             break;
                         case 'B':
-                            generateXiangMoves(i, j, piece.color);
+                            generateXiangMoves(j, i, piece.color);
                             break;
                         case 'A':
-                            generateShiMoves(i, j, piece.color);
+                            generateShiMoves(j, i, piece.color);
                             break;
                         case 'K':
-                            generateJiangMoves(i, j, piece.color);
+                            generateJiangMoves(j, i, piece.color);
                             break;
                         case 'P':
-                            generateBingMoves(i, j, piece.color);
+                            generateBingMoves(j, i, piece.color);
                             break;
                         case 'r':
-                            generateJuMoves(i, j, piece.color);
+                            generateJuMoves(j, i, piece.color);
                             break;
                         case 'c':
-                            generatePaoMoves(i, j, piece.color);
+                            generatePaoMoves(j, i, piece.color);
                             break;
                         case 'n':
-                            generateMaMoves(i, j, piece.color);
+                            generateMaMoves(j, i, piece.color);
                             break;
                         case 'b':
-                            generateXiangMoves(i, j, piece.color);
+                            generateXiangMoves(j, i, piece.color);
                             break;
                         case 'a':
-                            generateShiMoves(i, j, piece.color);
+                            generateShiMoves(j, i, piece.color);
                             break;
                         case 'k':
-                            generateJiangMoves(i, j, piece.color);
+                            generateJiangMoves(j, i, piece.color);
                             break;
                         case 'p':
-                            generateBingMoves(i, j, piece.color);
+                            generateBingMoves(j, i, piece.color);
                             break;
                         default:
                             break;
@@ -301,6 +337,12 @@ namespace ChineseChess
                 int nx = x + dx[i];
                 int ny = y + dy[i];
                 if (nx < 0 || nx >= 9 || ny < 0 || ny >= 10) continue;
+                // 处理拌马脚
+                // 这里不用考虑数组越界，因为越界的情况已经在上面被处理了
+                if (dx[i] == 2 && board[y][x + 1] != '.') continue;
+                if (dx[i] == -2 && board[y][x - 1] != '.') continue;
+                if (dy[i] == 2 && board[y + 1][x] != '.') continue;
+                if (dy[i] == -2 && board[y - 1][x] != '.') continue;
                 cur_move.init_x = x;
                 cur_move.init_y = y;
                 cur_move.next_x = nx;
@@ -333,7 +375,98 @@ namespace ChineseChess
             //和车生成动作相似，需要考虑炮翻山吃子的情况
             std::vector<Move> PaoMoves;
             //TODO
-
+            for(int i = x + 1; i < sizeY; i++) {
+                Move cur_move;
+                cur_move.init_x = x;
+                cur_move.init_y = y;
+                cur_move.next_x = i;
+                cur_move.next_y = y;
+                cur_move.score = 0;
+                if (board[y][i] != '.') {
+                    if(i == sizeY - 1) break;// 到达边界
+                    i++;
+                    while(i < sizeY && board[y][i] == '.') {// 接着往下找到第一个不为空的位置
+                        i++;
+                    }
+                    if(i >= sizeY) break;// 到达边界
+                    bool cur_color = (board[y][i] >= 'A' && board[y][i] <= 'Z');
+                    if (cur_color != color) {// 颜色不一样可以吃子
+                        cur_move.next_x = i;
+                        PaoMoves.push_back(cur_move);
+                    }
+                    break;
+                }
+                PaoMoves.push_back(cur_move);
+            }
+            for(int i = x - 1; i >= 0; i--) {
+                Move cur_move;
+                cur_move.init_x = x;
+                cur_move.init_y = y;
+                cur_move.next_x = i;
+                cur_move.next_y = y;
+                cur_move.score = 0;
+                if (board[y][i] != '.') {
+                    if(i == 0) break;// 到达边界
+                    i--;
+                    while(i >= 0 && board[y][i] == '.') {// 接着往下找到第一个不为空的位置
+                        i--;
+                    }
+                    if(i < 0) break;// 到达边界
+                    bool cur_color = (board[y][i] >= 'A' && board[y][i] <= 'Z');
+                    if (cur_color != color) {// 颜色不一样可以吃子
+                        cur_move.next_x = i;
+                        PaoMoves.push_back(cur_move);
+                    }
+                    break;
+                }
+                PaoMoves.push_back(cur_move);
+            }
+            for(int j = y + 1; j < sizeX; j++) {
+                Move cur_move;
+                cur_move.init_x = x;
+                cur_move.init_y = y;
+                cur_move.next_x = x;
+                cur_move.next_y = j;
+                cur_move.score = 0;
+                if (board[j][x] != '.') {
+                    if(j == sizeX - 1) break;// 到达边界
+                    j++;
+                    while(j < sizeX && board[j][x] == '.') {// 接着往下找到第一个不为空的位置
+                        j++;
+                    }
+                    if(j >= sizeX) break;// 到达边界
+                    bool cur_color = (board[j][x] >= 'A' && board[j][x] <= 'Z');
+                    if (cur_color != color) {// 颜色不一样可以吃子
+                        cur_move.next_y = j;
+                        PaoMoves.push_back(cur_move);
+                    }
+                    break;
+                }
+                PaoMoves.push_back(cur_move);
+            }
+            for(int j = y - 1; j >= 0; j--) {
+                Move cur_move;
+                cur_move.init_x = x;
+                cur_move.init_y = y;
+                cur_move.next_x = x;
+                cur_move.next_y = j;
+                cur_move.score = 0;
+                if (board[j][x] != '.') {
+                    if(j == 0) break;// 到达边界
+                    j--;
+                    while(j >= 0 && board[j][x] == '.') {// 接着往下找到第一个不为空的位置
+                        j--;
+                    }
+                    if(j < 0) break;// 到达边界
+                    bool cur_color = (board[j][x] >= 'A' && board[j][x] <= 'Z');
+                    if (cur_color != color) {// 颜色不一样可以吃子
+                        cur_move.next_y = j;
+                        PaoMoves.push_back(cur_move);
+                    }
+                    break;
+                }
+                PaoMoves.push_back(cur_move);
+            }
 
             for (int i = 0; i < PaoMoves.size(); i++) {
                 if(color) {
@@ -351,7 +484,38 @@ namespace ChineseChess
         void generateXiangMoves(int x, int y, bool color) {
             std::vector<Move> XiangMoves;
             //TODO
-
+            int dx[] = {2, 2, -2, -2};
+            int dy[] = {2, -2, 2, -2};
+            for(int i = 0; i < 4; i++) {
+                Move cur_move;
+                int nx = x + dx[i];
+                int ny = y + dy[i];
+                if (nx < 0 || nx >= 9 || ny < 0 || ny >= 10) continue;
+                // 处理过河未过河，红方在棋盘下面，所以红方的相纵坐标只能为5~9，黑方同理
+                if (color) {
+                    if (ny >= 5) continue;
+                } else {
+                    if (ny < 5) continue;
+                }
+                // 处理象眼
+                int mid_x = (x + nx) / 2;
+                int mid_y = (y + ny) / 2;
+                if (board[mid_y][mid_x] != '.') continue;
+                
+                cur_move.init_x = x;
+                cur_move.init_y = y;
+                cur_move.next_x = nx;
+                cur_move.next_y = ny;
+                cur_move.score = 0;
+                if (board[ny][nx] != '.') {
+                    bool cur_color = (board[ny][nx] >= 'A' && board[ny][nx] <= 'Z');
+                    if (cur_color != color) {
+                        XiangMoves.push_back(cur_move);
+                    }
+                    continue;
+                }
+                XiangMoves.push_back(cur_move);
+            }
 
             for (int i = 0; i < XiangMoves.size(); i++) {
                 if(color) {
@@ -369,7 +533,29 @@ namespace ChineseChess
         void generateShiMoves(int x, int y, bool color) {
             std::vector<Move> ShiMoves;
             //TODO
-
+            int dx[] = {1, 1, -1, -1};
+            int dy[] = {1, -1, 1, -1};
+            for(int i = 0; i < 4; i++) {
+                Move cur_move;
+                int nx = x + dx[i];
+                int ny = y + dy[i];
+                if (nx < 3 || nx >= 6 || ny < 0 || ny >= 10) continue;
+                if(color && ny < 7) continue;
+                if(!color && ny > 2) continue;
+                cur_move.init_x = x;
+                cur_move.init_y = y;
+                cur_move.next_x = nx;
+                cur_move.next_y = ny;
+                cur_move.score = 0;
+                if (board[ny][nx] != '.') {
+                    bool cur_color = (board[ny][nx] >= 'A' && board[ny][nx] <= 'Z');
+                    if (cur_color != color) {
+                        ShiMoves.push_back(cur_move);
+                    }
+                    continue;
+                }
+                ShiMoves.push_back(cur_move);
+            }
 
             for (int i = 0; i < ShiMoves.size(); i++) {
                 if(color) {
@@ -387,7 +573,66 @@ namespace ChineseChess
         void generateJiangMoves(int x, int y, bool color) {
             std::vector<Move> JiangMoves;
             //TODO
-
+            int dx[] = {1, 0, -1, 0};
+            int dy[] = {0, 1, 0, -1};
+            for(int i = 0; i < 4; i++) {
+                Move cur_move;
+                int nx = x + dx[i];
+                int ny = y + dy[i];
+                if (nx < 3 || nx >= 6 || ny < 0 || ny >= 10) continue;
+                if(color && ny < 7) continue;
+                if(!color && ny > 2) continue;
+                cur_move.init_x = x;
+                cur_move.init_y = y;
+                cur_move.next_x = nx;
+                cur_move.next_y = ny;
+                cur_move.score = 0;
+                if (board[ny][nx] != '.') {
+                    bool cur_color = (board[ny][nx] >= 'A' && board[ny][nx] <= 'Z');
+                    if (cur_color != color) {
+                        JiangMoves.push_back(cur_move);
+                    }
+                    continue;
+                }
+                JiangMoves.push_back(cur_move);
+            }
+            // 出于简单起见，如果将帅碰面，就直接飞过去吃掉
+            if(color && board[0][x] == 'k') {
+                bool block = false;
+                for(int i = y-1; i >= 0; i--) {// 检查将帅之间是否有棋子
+                    if(board[i][x] != '.') {
+                        block = true;
+                        break;
+                    }
+                }
+                if(!block) {
+                    Move cur_move;
+                    cur_move.init_x = x;
+                    cur_move.init_y = y;
+                    cur_move.next_x = x;
+                    cur_move.next_y = 0;
+                    cur_move.score = 0;
+                    JiangMoves.push_back(cur_move);
+                }
+            }
+            if(!color && board[9][x] == 'K') {
+                bool block = false;
+                for(int i = y+1; i < 10; i++) {// 检查将帅之间是否有棋子
+                    if(board[i][x] != '.') {
+                        block = true;
+                        break;
+                    }
+                }
+                if(!block) {
+                    Move cur_move;
+                    cur_move.init_x = x;
+                    cur_move.init_y = y;
+                    cur_move.next_x = x;
+                    cur_move.next_y = 9;
+                    cur_move.score = 0;
+                    JiangMoves.push_back(cur_move);
+                }
+            }
 
             for (int i = 0; i < JiangMoves.size(); i++) {
                 if(color) {
@@ -406,6 +651,168 @@ namespace ChineseChess
             //需要分条件考虑，小兵在过楚河汉界之前只能前进，之后可以左右前
             std::vector<Move> BingMoves;
             //TODO
+            if(color) {
+                if(y >= 5) {// 没过河，只能前进
+                    int nx = x;
+                    int ny = y - 1;
+                    if(ny >= 0) {
+                        Move cur_move;
+                        cur_move.init_x = x;
+                        cur_move.init_y = y;
+                        cur_move.next_x = nx;
+                        cur_move.next_y = ny;
+                        cur_move.score = 0;
+                        if(board[ny][nx] == '.') {
+                            BingMoves.push_back(cur_move);
+                        }
+                        else {
+                            bool cur_color = (board[ny][nx] >= 'A' && board[ny][nx] <= 'Z');
+                            if(cur_color != color) {
+                                BingMoves.push_back(cur_move);
+                            }
+                        }
+                    }
+                }
+                else {// 过河了，可以左右前
+                    int nx = x;
+                    int ny = y - 1;
+                    if(ny >= 0) {
+                        Move cur_move;
+                        cur_move.init_x = x;
+                        cur_move.init_y = y;
+                        cur_move.next_x = nx;
+                        cur_move.next_y = ny;
+                        cur_move.score = 0;
+                        if(board[ny][nx] == '.') {
+                            BingMoves.push_back(cur_move);
+                        }
+                        else {
+                            bool cur_color = (board[ny][nx] >= 'A' && board[ny][nx] <= 'Z');
+                            if(cur_color != color) {
+                                BingMoves.push_back(cur_move);
+                            }
+                        }
+                    }
+                    nx = x + 1;
+                    ny = y;
+                    if(nx < 9) {
+                        Move cur_move;
+                        cur_move.init_x = x;
+                        cur_move.init_y = y;
+                        cur_move.next_x = nx;
+                        cur_move.next_y = ny;
+                        cur_move.score = 0;
+                        if(board[ny][nx] == '.') {
+                            BingMoves.push_back(cur_move);
+                        }
+                        else {
+                            bool cur_color = (board[ny][nx] >= 'A' && board[ny][nx] <= 'Z');
+                            if(cur_color != color) {
+                                BingMoves.push_back(cur_move);
+                            }
+                        }
+                    }
+                    nx = x - 1;
+                    ny = y;
+                    if(nx >= 0) {
+                        Move cur_move;
+                        cur_move.init_x = x;
+                        cur_move.init_y = y;
+                        cur_move.next_x = nx;
+                        cur_move.next_y = ny;
+                        cur_move.score = 0;
+                        if(board[ny][nx] == '.') {
+                            BingMoves.push_back(cur_move);
+                        }
+                        else {
+                            bool cur_color = (board[ny][nx] >= 'A' && board[ny][nx] <= 'Z');
+                            if(cur_color != color) {
+                                BingMoves.push_back(cur_move);
+                            }
+                        }
+                    }
+                }
+            }
+            else {
+                if(y <= 4) {// 没过河，只能前进
+                    int nx = x;
+                    int ny = y + 1;
+                    Move cur_move;
+                    cur_move.init_x = x;
+                    cur_move.init_y = y;
+                    cur_move.next_x = nx;
+                    cur_move.next_y = ny;
+                    cur_move.score = 0;
+                    if(board[ny][nx] == '.') {
+                        BingMoves.push_back(cur_move);
+                    }
+                    else {
+                        bool cur_color = (board[ny][nx] >= 'A' && board[ny][nx] <= 'Z');
+                        if(cur_color != color) {
+                            BingMoves.push_back(cur_move);
+                        }
+                    }
+                }
+                else {// 过河了，可以左右前
+                    int nx = x;
+                    int ny = y + 1;
+                    if(ny < 10) {
+                        Move cur_move;
+                        cur_move.init_x = x;
+                        cur_move.init_y = y;
+                        cur_move.next_x = nx;
+                        cur_move.next_y = ny;
+                        cur_move.score = 0;
+                        if(board[ny][nx] == '.') {
+                            BingMoves.push_back(cur_move);
+                        }
+                        else {
+                            bool cur_color = (board[ny][nx] >= 'A' && board[ny][nx] <= 'Z');
+                            if(cur_color != color) {
+                                BingMoves.push_back(cur_move);
+                            }
+                        }
+                    }
+                    nx = x + 1;
+                    ny = y;
+                    if(nx < 9) {
+                        Move cur_move;
+                        cur_move.init_x = x;
+                        cur_move.init_y = y;
+                        cur_move.next_x = nx;
+                        cur_move.next_y = ny;
+                        cur_move.score = 0;
+                        if(board[ny][nx] == '.') {
+                            BingMoves.push_back(cur_move);
+                        }
+                        else {
+                            bool cur_color = (board[ny][nx] >= 'A' && board[ny][nx] <= 'Z');
+                            if(cur_color != color) {
+                                BingMoves.push_back(cur_move);
+                            }
+                        }
+                    }
+                    nx = x - 1;
+                    ny = y;
+                    if(nx >= 0) {
+                        Move cur_move;
+                        cur_move.init_x = x;
+                        cur_move.init_y = y;
+                        cur_move.next_x = nx;
+                        cur_move.next_y = ny;
+                        cur_move.score = 0;
+                        if(board[ny][nx] == '.') {
+                            BingMoves.push_back(cur_move);
+                        }
+                        else {
+                            bool cur_color = (board[ny][nx] >= 'A' && board[ny][nx] <= 'Z');
+                            if(cur_color != color) {
+                                BingMoves.push_back(cur_move);
+                            }
+                        }
+                    }
+                }
+            }
 
 
             for (int i = 0; i < BingMoves.size(); i++) {
@@ -427,15 +834,161 @@ namespace ChineseChess
         }
 
         //棋盘分数评估，根据当前棋盘进行棋子价值和棋力评估，max玩家减去min玩家分数
-        int evaluateNode() {
+        int evaluateNode(bool now_color) {
             //TODO
-            return 0;
+            int red_score = 0;
+            int black_score = 0;
+            auto red_moves = getMoves(true);
+            auto black_moves = getMoves(false);
+            std::vector<std::pair<int, int>> red_check;// 红方能够将军的位置
+            std::vector<std::pair<int, int>> black_check;// 黑方能够将军的位置
+            // 计算红方下一步吃子的收益
+            for(int i = 0; i < red_moves.size(); i++) {
+                if(board[red_moves[i].next_y][red_moves[i].next_x] == '.') continue;
+                auto piece_name = getPieceName(board[red_moves[i].next_y][red_moves[i].next_x]);
+                // 下一步红方动，且可以直接吃将，因此已经赢下棋局
+                if(now_color && piece_name == "Jiang") {
+                    // 这里少加一点是为了正确更新best_move
+                    return std::numeric_limits<int>::max()-1;
+                }
+                // 否则计算红方下一步吃子的收益
+                if(next_move_values.find(piece_name) == next_move_values.end()) continue;
+                red_score += next_move_values[piece_name];
+                // 对能够将军的棋子位置做特别记录
+                if(piece_name == "Jiang") {
+                    red_check.push_back(std::make_pair(red_moves[i].init_x, red_moves[i].init_y));
+                }
+            }
+            // 计算黑方下一步吃子的收益
+            for(int i = 0; i < black_moves.size(); i++) {
+                if(board[black_moves[i].next_y][black_moves[i].next_x] == '.') continue;
+                auto piece_name = getPieceName(board[black_moves[i].next_y][black_moves[i].next_x]);
+                // 下一步黑方动，且可以直接吃将，因此已经赢下棋局
+                if(!now_color && piece_name == "Jiang") {
+                    return std::numeric_limits<int>::min()+1;
+                }
+                // 否则计算黑方下一步吃子的收益
+                if(next_move_values.find(piece_name) == next_move_values.end()) continue;
+                black_score += next_move_values[piece_name];
+                // 对能够将军的棋子位置做特别记录
+                if(piece_name == "Jiang") {
+                    black_check.push_back(std::make_pair(black_moves[i].init_x, black_moves[i].init_y));
+                }
+            }
+            // 如果现在是红方动，则需要检查是否可以威胁到黑方正在将军的棋子
+            // 如果黑方正在将军的棋子只有一个，且能够将其吃掉，则实际上黑方这一将威胁不大
+            // 否则红方必须转向防守，黑方优势较大
+            // 这里只对将军的情况进行处理的原因是，对于其它棋子，能够将其吃掉可以看作是对它进攻能力的一种牵制，
+            // 因此可以不作这么复杂的处理。而将帅本身进攻能力不强，能够将将帅吃掉代表的是对胜局的影响，必须谨慎赋予分数
+            if(now_color && black_check.size() == 1) {
+                for(int i = 0; i < red_moves.size(); i++) {
+                    if(red_moves[i].next_x == black_check[0].first && red_moves[i].next_y == black_check[0].second) {
+                        black_score -= next_move_values["Jiang"];
+                        black_score += 500; // 威胁不大，但不是完全没有作用。这一数值可以调整
+                        break;
+                    }
+                }
+            }
+            else if(!now_color && red_check.size() == 1) {  // 黑方动时同理
+                for(int i = 0; i < black_moves.size(); i++) {
+                    if(black_moves[i].next_x == red_check[0].first && black_moves[i].next_y == red_check[0].second) {
+                        red_score -= next_move_values["Jiang"];
+                        red_score += 500; // 威胁不大，但不是完全没有作用。这一数值可以调整
+                        break;
+                    }
+                }
+            }
+            bool red_Jiang = false;
+            bool black_Jiang = false;
+            // 计算棋子价值和位置价值
+            for(int j = 0; j < 10; j++) {
+                for(int i = 0; i < 9; i++) {
+                    if(board[j][i] == '.') continue;
+                    char pieceChar = board[j][i];
+                    bool color = (pieceChar >= 'A' && pieceChar <= 'Z');
+                    std::string piece_name = getPieceName(pieceChar);
+                    if(color) {
+                        red_score += piece_values[piece_name];
+                        switch (pieceChar) {
+                            case 'R':
+                                red_score += JuPosition[i][9 - j];
+                                break;
+                            case 'C':
+                                red_score += PaoPosition[i][9 - j];
+                                break;
+                            case 'N':
+                                red_score += MaPosition[i][9 - j];
+                                break;
+                            case 'B':
+                                red_score += XiangPosition[i][9 - j];
+                                break;
+                            case 'A':
+                                red_score += ShiPosition[i][9 - j];
+                                break;
+                            case 'K':
+                                red_score += JiangPosition[i][9 - j];
+                                red_Jiang = true;
+                                break;
+                            case 'P':
+                                red_score += BingPosition[i][9 - j];
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    else {
+                        black_score += piece_values[piece_name];
+                        switch (pieceChar) {
+                            case 'r':
+                                black_score += JuPosition[i][j];
+                                break;
+                            case 'c':
+                                black_score += PaoPosition[i][j];
+                                break;
+                            case 'n':
+                                black_score += MaPosition[i][j];
+                                break;
+                            case 'b':
+                                black_score += XiangPosition[i][j];
+                                break;
+                            case 'a':
+                                black_score += ShiPosition[i][j];
+                                break;
+                            case 'k':
+                                black_score += JiangPosition[i][j];
+                                black_Jiang = true;
+                                break;
+                            case 'p':
+                                black_score += BingPosition[i][j];
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                
+                }
+            }
+            if(!red_Jiang) return std::numeric_limits<int>::min()+1; // 如果红方帅被吃，黑胜
+            if(!black_Jiang) return std::numeric_limits<int>::max()-1; // 如果黑方将被吃，红胜
+            return red_score - black_score;
         }
 
         //测试接口
         std::vector<Move> getMoves(bool color) {
             if(color) return red_moves;
             return black_moves;
+        }
+
+        void setMoveScore(bool color, int i, int score) {
+            if(i < 0)   return;
+            if(color) {
+                if(i < red_moves.size())
+                    red_moves[i].score = score;
+            }
+            else {
+                if(i < black_moves.size())
+                    black_moves[i].score = score;
+            }
         }
     
         std::vector<ChessPiece> getChessPiece() {
@@ -451,18 +1004,22 @@ namespace ChineseChess
     class GameTreeNode {
     private:
         bool color; // 当前玩家类型，true为红色方、false为黑色方
+                    // 这里的color表示在当前状态下，下一步应该谁动
         ChessBoard board; // 当前棋盘状态
+        Move best_move; // 当前节点的最佳动作
         std::vector<GameTreeNode*> children; // 子节点列表
         int evaluationScore; // 棋盘评估分数
+        bool evaluated; // 是否已经评估过
 
     public:
         // 构造函数
-        GameTreeNode(bool color, std::vector<std::vector<char>> initBoard, int evaluationScore)
+        GameTreeNode(bool color, std::vector<std::vector<char>> &initBoard, int evaluationScore)
             : color(color), evaluationScore(evaluationScore) {
             board.initializeBoard(initBoard);
-            std::vector<Move> moves = board.getMoves(color);
+            // std::vector<Move> moves = board.getMoves(color);
             children.clear();
-            std::vector<std::vector<char>> cur_board = board.getBoard();
+            // std::vector<std::vector<char>> cur_board = board.getBoard();
+            evaluated = false;
 
             // 为合法动作创建子节点
             // for (int i = 0; i < moves.size(); i++) {
@@ -472,21 +1029,71 @@ namespace ChineseChess
         }
 
         //根据当前棋盘和动作构建新棋盘（子节点）
-        GameTreeNode* updateBoard(std::vector<std::vector<char>> cur_board, Move move, bool color) {
+        GameTreeNode* updateBoard(Move move) {
             //TODO
             GameTreeNode* test;
+            auto cur_board = board.getBoard();
+            std::vector<std::vector<char>> new_board = cur_board;
+            new_board[move.next_y][move.next_x] = new_board[move.init_y][move.init_x];
+            new_board[move.init_y][move.init_x] = '.';
+            test = new GameTreeNode(!color, new_board, 0);
+            // children.push_back(test);
             return test;
         }
 
         //返回节点评估分数
         int getEvaluationScore() {
-            evaluationScore = board.evaluateNode();
+            if(evaluated) return evaluationScore;
+            evaluationScore = board.evaluateNode(color);
             return evaluationScore;
+        }
+
+        int haveJiang() {   // 检查当前情况将是否还存活
+            bool red_Jiang = false;
+            bool black_Jiang = false;
+            auto cur_board = board.getBoard();
+            for(int j = 0; j < 10; j++) {
+                for(int i = 0; i < 9; i++) {
+                    if(cur_board[j][i] == '.') continue;
+                    char pieceChar = cur_board[j][i];
+                    bool color = (pieceChar >= 'A' && pieceChar <= 'Z');
+                    if(color) {
+                        if(pieceChar == 'K') {
+                            red_Jiang = true;
+                            break;
+                        }
+                    }
+                    else {
+                        if(pieceChar == 'k') {
+                            black_Jiang = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if(red_Jiang) {
+                if(black_Jiang) {
+                    return 0;   // 都存活
+                }
+                return 1;   // 红方存活
+            }
+            if(black_Jiang) {
+                return -1;  // 黑方存活
+            }
+            return 0;   // 都死亡（实际不可能出现）
         }
 
         //返回棋盘类
         ChessBoard getBoardClass() {
             return board;
+        }
+
+        void setBestMove(Move move) {
+            best_move = move;
+        }
+
+        Move getBestMove() {
+            return best_move;
         }
         
         ~GameTreeNode() {
