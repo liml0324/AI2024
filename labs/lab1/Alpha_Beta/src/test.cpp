@@ -83,12 +83,23 @@ int main() {
         GameTreeNode root(true, board, std::numeric_limits<int>::min());
 
         //TODO
-        std::cout << "Case " << x << std::endl;
-        std::cout << "best score: " << alphaBeta(root, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), depth, true) << std::endl;
-        std::cout << "best move: " << root.getBestMove().init_x << " " << root.getBestMove().init_y << "->" << root.getBestMove().next_x << " " << root.getBestMove().next_y << std::endl;
+        std::ofstream out("../output/output_"+std::to_string(x)+".txt");
+        alphaBeta(root, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), depth, true);
+        if(out.is_open()) {
+            auto board = root.getBoardClass().getBoard();
+            auto best_move = root.getBestMove();
+            auto piece_char = board[best_move.init_y][best_move.init_x];
+            out << piece_char << " (" << best_move.init_x << "," << 9-best_move.init_y << ") (" << best_move.next_x << "," << 9-best_move.next_y << ")" << std::endl;
+        }
+        else {
+            std::cout << "open file failed" << std::endl;
+        }
+        // std::cout << "Case " << x << std::endl;
+        // std::cout << "best score: " << alphaBeta(root, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), depth, true) << std::endl;
+        // std::cout << "best move: " << root.getBestMove().init_x << " " << root.getBestMove().init_y << "->" << root.getBestMove().next_x << " " << root.getBestMove().next_y << std::endl;
     }
     auto end_time = clock();
-    std::cout << "time: " << (double)(end_time - begin_time) / CLOCKS_PER_SEC << std::endl;
+    // std::cout << "time: " << (double)(end_time - begin_time) / CLOCKS_PER_SEC << std::endl;
     
 
 

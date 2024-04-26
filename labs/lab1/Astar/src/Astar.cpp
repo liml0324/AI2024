@@ -24,12 +24,124 @@ struct Search_Cell
     Map_Cell *map_cell;
     int t;
     char action;
+    Search_Cell * parent;
 };
 
 // 自定义比较函数对象，按照 Search_Cell 结构体的 g + h 属性进行比较
 struct CompareF {
     bool operator()(const Search_Cell *a, const Search_Cell *b) const {
         return (a->g + a->h) > (b->g + b->h); // 较小的 g + h 值优先级更高
+    }
+};
+
+// 标准库的优先队列不能修改元素，因此需要自定义优先队列
+class MinHeap {
+    private:
+    vector<Search_Cell *> heap;
+    map<tuple<int, int, int>, int> index_map;
+    public:
+    MinHeap() {
+        heap.push_back(nullptr);
+    }
+    void push(Search_Cell *cell) {
+        heap.push_back(cell);
+        int index = heap.size() - 1;
+        index_map[make_tuple(cell->map_cell->i, cell->map_cell->j, cell->t)] = index;
+        while(index > 1) {
+            int parent_index = index / 2;
+            if(heap[parent_index]->g + heap[parent_index]->h <= cell->g + cell->h) {
+                break;
+            }
+            swap(heap[parent_index], heap[index]);
+            index_map[make_tuple(heap[parent_index]->map_cell->i, heap[parent_index]->map_cell->j, heap[parent_index]->t)] = parent_index;
+            index_map[make_tuple(heap[index]->map_cell->i, heap[index]->map_cell->j, heap[index]->t)] = index;
+            index = parent_index;
+        }
+    }
+    Search_Cell *top() {
+        return heap[1];
+    }
+    void pop() {
+        if(heap.size() == 1) {
+            return;
+        }
+        if(heap.size() == 2) {
+            index_map.erase(make_tuple(heap[1]->map_cell->i, heap[1]->map_cell->j, heap[1]->t));
+            heap.pop_back();
+            return;
+        }
+        index_map.erase(make_tuple(heap[1]->map_cell->i, heap[1]->map_cell->j, heap[1]->t));
+        heap[1] = heap.back();
+        heap.pop_back();
+        index_map[make_tuple(heap[1]->map_cell->i, heap[1]->map_cell->j, heap[1]->t)] = 1;
+        int index = 1;
+        while(index * 2 < heap.size()) {
+            int left_index = index * 2;
+            int right_index = index * 2 + 1;
+            int min_index = index;
+            if(heap[left_index]->g + heap[left_index]->h < heap[min_index]->g + heap[min_index]->h) {
+                min_index = left_index;
+            }
+            if(right_index < heap.size() && heap[right_index]->g + heap[right_index]->h < heap[min_index]->g + heap[min_index]->h) {
+                min_index = right_index;
+            }
+            if(min_index == index) {
+                break;
+            }
+            swap(heap[min_index], heap[index]);
+            index_map[make_tuple(heap[min_index]->map_cell->i, heap[min_index]->map_cell->j, heap[min_index]->t)] = min_index;
+            index_map[make_tuple(heap[index]->map_cell->i, heap[index]->map_cell->j, heap[index]->t)] = index;
+            index = min_index;
+        }
+    }
+    void update(Search_Cell *cell) {
+        int index = index_map[make_tuple(cell->map_cell->i, cell->map_cell->j, cell->t)];
+        while(index > 1) {
+            int parent_index = index / 2;
+            if(heap[parent_index]->g + heap[parent_index]->h <= cell->g + cell->h) {
+                break;
+            }
+            swap(heap[parent_index], heap[index]);
+            index_map[make_tuple(heap[parent_index]->map_cell->i, heap[parent_index]->map_cell->j, heap[parent_index]->t)] = parent_index;
+            index_map[make_tuple(heap[index]->map_cell->i, heap[index]->map_cell->j, heap[index]->t)] = index;
+            index = parent_index;
+        }
+        while(index * 2 < heap.size()) {
+            int left_index = index * 2;
+            int right_index = index * 2 + 1;
+            int min_index = index;
+            if(heap[left_index]->g + heap[left_index]->h < heap[min_index]->g + heap[min_index]->h) {
+                min_index = left_index;
+            }
+            if(right_index < heap.size() && heap[right_index]->g + heap[right_index]->h < heap[min_index]->g + heap[min_index]->h) {
+                min_index = right_index;
+            }
+            if(min_index == index) {
+                break;
+            }
+            swap(heap[min_index], heap[index]);
+            index_map[make_tuple(heap[min_index]->map_cell->i, heap[min_index]->map_cell->j, heap[min_index]->t)] = min_index;
+            index_map[make_tuple(heap[index]->map_cell->i, heap[index]->map_cell->j, heap[index]->t)] = index;
+            index = min_index;
+        }
+    }
+    bool empty() {
+        return heap.size() == 1;
+    }
+    Search_Cell *find(Search_Cell *cell) {
+        if(index_map.find(make_tuple(cell->map_cell->i, cell->map_cell->j, cell->t)) == index_map.end()) {
+            return nullptr;
+        }
+        return heap[index_map[make_tuple(cell->map_cell->i, cell->map_cell->j, cell->t)]];
+    }
+    Search_Cell *find(tuple<int, int, int> key) {
+        if(index_map.find(key) == index_map.end()) {
+            return nullptr;
+        }
+        return heap[index_map[key]];
+    }
+    Search_Cell *end() {
+        return nullptr;
     }
 };
 
@@ -98,12 +210,14 @@ int Astar_search(const string input_file, int &step_nums, string &way)
     search_cell->map_cell = &Map[start_point.first][start_point.second];
     //cout << search_cell->map_cell->i << " " << search_cell->map_cell->j << endl;
     search_cell->t = T;
+    search_cell->parent = nullptr;
     search_cell->h = Heuristic_Funtion(Map, search_cell, start_point, end_point); // Heuristic_Funtion();
 
-    priority_queue<Search_Cell *, vector<Search_Cell *>, CompareF> open_list;
+    MinHeap open_list;
+    // map<tuple<int, int, int>, Search_Cell *> open_list;
     // vector<Search_Cell *> close_list;
-    vector<vector<Search_Cell *>> parent = vector<vector<Search_Cell *>>(M, vector<Search_Cell *>(N, nullptr));
-    parent[start_point.first][start_point.second] = search_cell;
+    map<tuple<int, int, int>, Search_Cell *> close_list;
+    // vector<vector<Search_Cell *>> parent = vector<vector<Search_Cell *>>(M, vector<Search_Cell *>(N, nullptr));
     open_list.push(search_cell);
     Search_Cell *end_cell = nullptr;
 
@@ -113,6 +227,7 @@ int Astar_search(const string input_file, int &step_nums, string &way)
         times++;
         Search_Cell *current_cell = open_list.top();
         open_list.pop();
+        // open_list.erase(make_tuple(current_cell->map_cell->i, current_cell->map_cell->j, current_cell->t))
         //cout << current_cell->map_cell->i << " " << current_cell->map_cell->j << " " << current_cell->g << " " << current_cell->t << endl;
         // close_list.push_back(current_cell);
         if(current_cell->map_cell->type == 4)
@@ -121,67 +236,63 @@ int Astar_search(const string input_file, int &step_nums, string &way)
             end_cell = current_cell;
             break;
         }
-        if(current_cell->map_cell->type == 2)
-        {
-            // 补给点
-            current_cell->t = T;
-        }
         if(current_cell->t == 0) 
         {
             continue;
         }
-        if( current_cell->map_cell->i > 0 && \
-            Map[current_cell->map_cell->i - 1][current_cell->map_cell->j].type != 1 && \
-            parent[current_cell->map_cell->i - 1][current_cell->map_cell->j] == nullptr)// 可以向上搜索
-        {
-            Search_Cell *up_cell = new Search_Cell;
-            up_cell->g = current_cell->g + 1;
-            up_cell->map_cell = &Map[current_cell->map_cell->i - 1][current_cell->map_cell->j];
-            up_cell->t = current_cell->t - 1;
-            up_cell->action = 'U';
-            up_cell->h = Heuristic_Funtion(Map, up_cell, start_point, end_point); // Heuristic_Funtion();
-            open_list.push(up_cell);
-            parent[up_cell->map_cell->i][up_cell->map_cell->j] = current_cell;
+        vector<pair<int, int>> directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+        vector<char> actions = {'U', 'D', 'L', 'R'};
+        for(int k = 0; k < 4; k++) {
+            auto new_i = current_cell->map_cell->i + directions[k].first;
+            auto new_j = current_cell->map_cell->j + directions[k].second;
+            if(new_i < 0 || new_i >= M || new_j < 0 || new_j >= N || Map[new_i][new_j].type == 1) {
+                continue;
+            }
+            auto new_t = Map[new_i][new_j].type == 2 ? T : current_cell->t - 1; // 考虑补给点
+            // if(new_t <= 0) {    // 体力归零
+            //     continue;
+            // }
+            auto next_cell = new Search_Cell;
+            next_cell->map_cell = &Map[new_i][new_j];
+            next_cell->g = current_cell->g + 1;
+            next_cell->t = new_t;
+            next_cell->h = Heuristic_Funtion(Map, next_cell, start_point, end_point);
+            next_cell->action = actions[k];
+            if(open_list.find(make_tuple(new_i, new_j, new_t)) == open_list.end() && close_list.find(make_tuple(new_i, new_j, new_t)) == close_list.end()){
+                next_cell->parent = current_cell;
+                open_list.push(next_cell);
+            } 
+            else {
+                auto temp = open_list.find(make_tuple(new_i, new_j, new_t));
+                if(temp != nullptr) {   // 在open_list中
+                    if(next_cell->g < temp->g) {    // 如果g值更小，则更新g值
+                        // cout << "update" << endl;
+                        // cout << "temp: " << temp->map_cell->i << " " << temp->map_cell->j << " " << temp->t << endl;
+                        // cout << "next_cell: " << next_cell->map_cell->i << " " << next_cell->map_cell->j << " " << next_cell->t << endl;
+                        // cout << "current_cell: " << current_cell->map_cell->i << " " << current_cell->map_cell->j << " " << current_cell->t << endl;
+                        temp->g = next_cell->g;
+                        temp->parent = current_cell;
+                        temp->action = next_cell->action;
+                        temp->h = next_cell->h;
+                        open_list.update(temp);
+                    }
+                    delete[] next_cell;
+                }
+                else {
+                    temp = close_list[make_tuple(new_i, new_j, new_t)];
+                    if(next_cell->g < temp->g) {
+                        temp->g = next_cell->g;
+                        temp->parent = current_cell;
+                        temp->action = next_cell->action;
+                        temp->h = next_cell->h;
+                        open_list.push(temp);
+                        close_list.erase(make_tuple(new_i, new_j, new_t));
+                    }
+                    delete[] next_cell;
+                }
+            }
         }
-        if(current_cell->map_cell->i < M - 1 && \
-            Map[current_cell->map_cell->i + 1][current_cell->map_cell->j].type != 1 && \
-            parent[current_cell->map_cell->i + 1][current_cell->map_cell->j] == nullptr)// 可以向下搜索
-        {
-            Search_Cell *down_cell = new Search_Cell;
-            down_cell->g = current_cell->g + 1;
-            down_cell->map_cell = &Map[current_cell->map_cell->i + 1][current_cell->map_cell->j];
-            down_cell->t = current_cell->t - 1;
-            down_cell->action = 'D';
-            down_cell->h = Heuristic_Funtion(Map, down_cell, start_point, end_point); // Heuristic_Funtion();
-            open_list.push(down_cell);
-            parent[down_cell->map_cell->i][down_cell->map_cell->j] = current_cell;
-        }
-        if(current_cell->map_cell->j > 0 && \
-            Map[current_cell->map_cell->i][current_cell->map_cell->j - 1].type != 1 && \
-            parent[current_cell->map_cell->i][current_cell->map_cell->j - 1] == nullptr)// 可以向左搜索
-        {
-            Search_Cell *left_cell = new Search_Cell;
-            left_cell->g = current_cell->g + 1;
-            left_cell->map_cell = &Map[current_cell->map_cell->i][current_cell->map_cell->j - 1];
-            left_cell->t = current_cell->t - 1;
-            left_cell->action = 'L';
-            left_cell->h = Heuristic_Funtion(Map, left_cell, start_point, end_point); // Heuristic_Funtion();
-            open_list.push(left_cell);
-            parent[left_cell->map_cell->i][left_cell->map_cell->j] = current_cell;
-        }
-        if(current_cell->map_cell->j < N - 1 && \
-            Map[current_cell->map_cell->i][current_cell->map_cell->j + 1].type != 1 && \
-            parent[current_cell->map_cell->i][current_cell->map_cell->j + 1] == nullptr)// 可以向右搜索
-        {
-            Search_Cell *right_cell = new Search_Cell;
-            right_cell->g = current_cell->g + 1;
-            right_cell->map_cell = &Map[current_cell->map_cell->i][current_cell->map_cell->j + 1];
-            right_cell->t = current_cell->t - 1;
-            right_cell->action = 'R';
-            right_cell->h = Heuristic_Funtion(Map, right_cell, start_point, end_point); // Heuristic_Funtion();
-            open_list.push(right_cell);
-            parent[right_cell->map_cell->i][right_cell->map_cell->j] = current_cell;
-        }
+        close_list[make_tuple(current_cell->map_cell->i, current_cell->map_cell->j, current_cell->t)] = current_cell;
     }
     // cout << "finish search" << endl;
 
@@ -194,25 +305,27 @@ int Astar_search(const string input_file, int &step_nums, string &way)
     }
     step_nums = end_cell->g;
     
-    while(end_cell->map_cell->type != 3) {
+    while(end_cell && end_cell->map_cell->type != 3) {
+        // cout << end_cell->map_cell->i << " " << end_cell->map_cell->j << " " << end_cell->action << endl;
         way.push_back(end_cell->action);
-        end_cell = parent[end_cell->map_cell->i][end_cell->map_cell->j];
+        end_cell = end_cell->parent;
     }
     reverse(way.begin(), way.end());
 
     // ------------------------------------------------------------------
     // 释放动态内存
+    while(!open_list.empty())
+    {
+        auto temp = open_list.top();
+        open_list.pop();
+        delete[] temp;
+    }
     for(int i = 0; i < M; i++)
     {
         delete[] Map[i];
     }
     delete[] Map;
-    while(!open_list.empty())
-    {
-        auto temp = open_list.top();
-        delete[] temp;
-        open_list.pop();
-    }
+    
     // for(int i = 0; i < close_list.size(); i++)
     // {
     //     delete[] close_list[i];
@@ -246,13 +359,13 @@ int main(int argc, char *argv[])
     string input_base = "../input/input_";
     string output_base = "../output/output_";
     // input_0为讲义样例，此处不做测试
-    for(int i = 1; i < 11; i++)
+    for(int i = 0; i < 11; i++)
     {
         int step_nums = -1;
         string way = "";
-        Astar_search(input_base + to_string(i) + ".txt", step_nums, way) << ' ';
+        Astar_search(input_base + to_string(i) + ".txt", step_nums, way);
         output(output_base + to_string(i) + ".txt", step_nums, way);
     }
-    cout << endl;
+    // cout << endl;
     return 0;
 }

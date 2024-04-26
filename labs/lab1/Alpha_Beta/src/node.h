@@ -596,10 +596,16 @@ namespace ChineseChess
                 }
                 JiangMoves.push_back(cur_move);
             }
+            std::pair<int, int> black_Jiang_pos;
+            for(int i = 3; i < 6; i++) {
+                for(int j = 0; j < 3; j++) {
+                    if(board[j][i] == 'k')  black_Jiang_pos = {i, j};
+                }
+            }
             // 出于简单起见，如果将帅碰面，就直接飞过去吃掉
-            if(color && board[0][x] == 'k') {
+            if(color && x == black_Jiang_pos.first) {
                 bool block = false;
-                for(int i = y-1; i >= 0; i--) {// 检查将帅之间是否有棋子
+                for(int i = y-1; i > black_Jiang_pos.second; i--) {// 检查将帅之间是否有棋子
                     if(board[i][x] != '.') {
                         block = true;
                         break;
@@ -610,14 +616,20 @@ namespace ChineseChess
                     cur_move.init_x = x;
                     cur_move.init_y = y;
                     cur_move.next_x = x;
-                    cur_move.next_y = 0;
+                    cur_move.next_y = black_Jiang_pos.second;
                     cur_move.score = 0;
                     JiangMoves.push_back(cur_move);
                 }
             }
-            if(!color && board[9][x] == 'K') {
+            std::pair<int, int> red_Jiang_pos;
+            for(int i = 3; i < 6; i++) {
+                for(int j = 0; j < 3; j++) {
+                    if(board[j][i] == 'K')  red_Jiang_pos = {i, j};
+                }
+            }
+            if(!color && x == red_Jiang_pos.first) {
                 bool block = false;
-                for(int i = y+1; i < 10; i++) {// 检查将帅之间是否有棋子
+                for(int i = y+1; i < red_Jiang_pos.second; i++) {// 检查将帅之间是否有棋子
                     if(board[i][x] != '.') {
                         block = true;
                         break;
@@ -628,7 +640,7 @@ namespace ChineseChess
                     cur_move.init_x = x;
                     cur_move.init_y = y;
                     cur_move.next_x = x;
-                    cur_move.next_y = 9;
+                    cur_move.next_y = red_Jiang_pos.second;
                     cur_move.score = 0;
                     JiangMoves.push_back(cur_move);
                 }
@@ -840,64 +852,6 @@ namespace ChineseChess
             int black_score = 0;
             auto red_moves = getMoves(true);
             auto black_moves = getMoves(false);
-            std::vector<std::pair<int, int>> red_check;// 红方能够将军的位置
-            std::vector<std::pair<int, int>> black_check;// 黑方能够将军的位置
-            // 计算红方下一步吃子的收益
-            for(int i = 0; i < red_moves.size(); i++) {
-                if(board[red_moves[i].next_y][red_moves[i].next_x] == '.') continue;
-                auto piece_name = getPieceName(board[red_moves[i].next_y][red_moves[i].next_x]);
-                // 下一步红方动，且可以直接吃将，因此已经赢下棋局
-                if(now_color && piece_name == "Jiang") {
-                    // 这里少加一点是为了正确更新best_move
-                    return std::numeric_limits<int>::max()-1;
-                }
-                // 否则计算红方下一步吃子的收益
-                if(next_move_values.find(piece_name) == next_move_values.end()) continue;
-                red_score += next_move_values[piece_name];
-                // 对能够将军的棋子位置做特别记录
-                if(piece_name == "Jiang") {
-                    red_check.push_back(std::make_pair(red_moves[i].init_x, red_moves[i].init_y));
-                }
-            }
-            // 计算黑方下一步吃子的收益
-            for(int i = 0; i < black_moves.size(); i++) {
-                if(board[black_moves[i].next_y][black_moves[i].next_x] == '.') continue;
-                auto piece_name = getPieceName(board[black_moves[i].next_y][black_moves[i].next_x]);
-                // 下一步黑方动，且可以直接吃将，因此已经赢下棋局
-                if(!now_color && piece_name == "Jiang") {
-                    return std::numeric_limits<int>::min()+1;
-                }
-                // 否则计算黑方下一步吃子的收益
-                if(next_move_values.find(piece_name) == next_move_values.end()) continue;
-                black_score += next_move_values[piece_name];
-                // 对能够将军的棋子位置做特别记录
-                if(piece_name == "Jiang") {
-                    black_check.push_back(std::make_pair(black_moves[i].init_x, black_moves[i].init_y));
-                }
-            }
-            // 如果现在是红方动，则需要检查是否可以威胁到黑方正在将军的棋子
-            // 如果黑方正在将军的棋子只有一个，且能够将其吃掉，则实际上黑方这一将威胁不大
-            // 否则红方必须转向防守，黑方优势较大
-            // 这里只对将军的情况进行处理的原因是，对于其它棋子，能够将其吃掉可以看作是对它进攻能力的一种牵制，
-            // 因此可以不作这么复杂的处理。而将帅本身进攻能力不强，能够将将帅吃掉代表的是对胜局的影响，必须谨慎赋予分数
-            if(now_color && black_check.size() == 1) {
-                for(int i = 0; i < red_moves.size(); i++) {
-                    if(red_moves[i].next_x == black_check[0].first && red_moves[i].next_y == black_check[0].second) {
-                        black_score -= next_move_values["Jiang"];
-                        black_score += 500; // 威胁不大，但不是完全没有作用。这一数值可以调整
-                        break;
-                    }
-                }
-            }
-            else if(!now_color && red_check.size() == 1) {  // 黑方动时同理
-                for(int i = 0; i < black_moves.size(); i++) {
-                    if(black_moves[i].next_x == red_check[0].first && black_moves[i].next_y == red_check[0].second) {
-                        red_score -= next_move_values["Jiang"];
-                        red_score += 500; // 威胁不大，但不是完全没有作用。这一数值可以调整
-                        break;
-                    }
-                }
-            }
             bool red_Jiang = false;
             bool black_Jiang = false;
             // 计算棋子价值和位置价值
@@ -970,6 +924,65 @@ namespace ChineseChess
             }
             if(!red_Jiang) return std::numeric_limits<int>::min()+1; // 如果红方帅被吃，黑胜
             if(!black_Jiang) return std::numeric_limits<int>::max()-1; // 如果黑方将被吃，红胜
+            std::vector<std::pair<int, int>> red_check;// 红方能够将军的位置
+            std::vector<std::pair<int, int>> black_check;// 黑方能够将军的位置
+            // 计算红方下一步吃子的收益
+            for(int i = 0; i < red_moves.size(); i++) {
+                if(board[red_moves[i].next_y][red_moves[i].next_x] == '.') continue;
+                auto piece_name = getPieceName(board[red_moves[i].next_y][red_moves[i].next_x]);
+                // 下一步红方动，且可以直接吃将，因此已经赢下棋局
+                if(now_color && piece_name == "Jiang") {
+                    // 这里少加一点是为了正确更新best_move
+                    return std::numeric_limits<int>::max()-1;
+                }
+                // 否则计算红方下一步吃子的收益
+                if(next_move_values.find(piece_name) == next_move_values.end()) continue;
+                red_score += next_move_values[piece_name];
+                // 对能够将军的棋子位置做特别记录
+                if(piece_name == "Jiang") {
+                    red_check.push_back(std::make_pair(red_moves[i].init_x, red_moves[i].init_y));
+                }
+            }
+            // 计算黑方下一步吃子的收益
+            for(int i = 0; i < black_moves.size(); i++) {
+                if(board[black_moves[i].next_y][black_moves[i].next_x] == '.') continue;
+                auto piece_name = getPieceName(board[black_moves[i].next_y][black_moves[i].next_x]);
+                // 下一步黑方动，且可以直接吃将，因此已经赢下棋局
+                if(!now_color && piece_name == "Jiang") {
+                    return std::numeric_limits<int>::min()+1;
+                }
+                // 否则计算黑方下一步吃子的收益
+                if(next_move_values.find(piece_name) == next_move_values.end()) continue;
+                black_score += next_move_values[piece_name];
+                // 对能够将军的棋子位置做特别记录
+                if(piece_name == "Jiang") {
+                    black_check.push_back(std::make_pair(black_moves[i].init_x, black_moves[i].init_y));
+                }
+            }
+            // 如果现在是红方动，则需要检查是否可以威胁到黑方正在将军的棋子
+            // 如果黑方正在将军的棋子只有一个，且能够将其吃掉，则实际上黑方这一将威胁不大
+            // 否则红方必须转向防守，黑方优势较大
+            // 这里只对将军的情况进行处理的原因是，对于其它棋子，能够将其吃掉可以看作是对它进攻能力的一种牵制，
+            // 因此可以不作这么复杂的处理。而将帅本身进攻能力不强，能够将将帅吃掉代表的是对胜局的影响，必须谨慎赋予分数
+            if(now_color && black_check.size() == 1) {
+                for(int i = 0; i < red_moves.size(); i++) {
+                    if(red_moves[i].next_x == black_check[0].first && red_moves[i].next_y == black_check[0].second) {
+                        black_score -= next_move_values["Jiang"];
+                        black_score += 500; // 威胁不大，但不是完全没有作用。这一数值可以调整
+                        break;
+                    }
+                }
+            }
+            else if(!now_color && red_check.size() == 1) {  // 黑方动时同理
+                for(int i = 0; i < black_moves.size(); i++) {
+                    if(black_moves[i].next_x == red_check[0].first && black_moves[i].next_y == red_check[0].second) {
+                        red_score -= next_move_values["Jiang"];
+                        red_score += 500; // 威胁不大，但不是完全没有作用。这一数值可以调整
+                        break;
+                    }
+                }
+            }
+            
             return red_score - black_score;
         }
 
@@ -1056,19 +1069,8 @@ namespace ChineseChess
                 for(int i = 0; i < 9; i++) {
                     if(cur_board[j][i] == '.') continue;
                     char pieceChar = cur_board[j][i];
-                    bool color = (pieceChar >= 'A' && pieceChar <= 'Z');
-                    if(color) {
-                        if(pieceChar == 'K') {
-                            red_Jiang = true;
-                            break;
-                        }
-                    }
-                    else {
-                        if(pieceChar == 'k') {
-                            black_Jiang = true;
-                            break;
-                        }
-                    }
+                    if(pieceChar == 'k')    black_Jiang = true;
+                    if(pieceChar == 'K')    red_Jiang = true;
                 }
             }
             if(red_Jiang) {
