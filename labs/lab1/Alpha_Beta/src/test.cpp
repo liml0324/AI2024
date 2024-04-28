@@ -97,7 +97,7 @@ int main() {
     auto begin_time = clock();
     auto total_step = 0;
     for(int x = 1; x <= 10; x++) {
-        std::cout << "Case " << x << std::endl;
+        // std::cout << "Case " << x << std::endl;
         std::ifstream file("../input/"+std::to_string(x)+".txt");
         std::vector<std::vector<char>> board;
 
@@ -181,6 +181,6 @@ int main() {
         out.close();
     }
     auto end_time = clock();
-    std::cout << "average step time: " << (double)(end_time - begin_time) / CLOCKS_PER_SEC / total_step << std::endl;
+    // std::cout << "average step time: " << (double)(end_time - begin_time) / CLOCKS_PER_SEC / total_step << std::endl;
     return 0;
 }
