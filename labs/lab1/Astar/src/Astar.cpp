@@ -6,6 +6,7 @@
 #include<sstream>
 #include<string>
 #include<algorithm>
+#include<time.h>
 
 using namespace std;
 
@@ -148,8 +149,8 @@ class MinHeap {
 // TODO: 定义启发式函数
 int Heuristic_Funtion(Map_Cell **Map, Search_Cell *search_cell, pair<int, int> start_point, pair<int, int> end_point)
 {
-    return abs(search_cell->map_cell->i - end_point.first) + abs(search_cell->map_cell->j - end_point.second);
-    // return 0;
+    // return abs(search_cell->map_cell->i - end_point.first) + abs(search_cell->map_cell->j - end_point.second);
+    return 0;
 }
 
 int Astar_search(const string input_file, int &step_nums, string &way)
@@ -356,6 +357,7 @@ void output(const string output_file, int &step_nums, string &way)
 
 int main(int argc, char *argv[])
 {
+    auto begin_time = clock();
     string input_base = "../input/input_";
     string output_base = "../output/output_";
     // input_0为讲义样例，此处不做测试
@@ -367,5 +369,7 @@ int main(int argc, char *argv[])
         output(output_base + to_string(i) + ".txt", step_nums, way);
     }
     // cout << endl;
+    auto end_time = clock();
+    cout << "time: " << (double)(end_time-begin_time) / CLOCKS_PER_SEC << endl;
     return 0;
 }
