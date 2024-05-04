@@ -149,8 +149,8 @@ class MinHeap {
 // TODO: 定义启发式函数
 int Heuristic_Funtion(Map_Cell **Map, Search_Cell *search_cell, pair<int, int> start_point, pair<int, int> end_point)
 {
-    // return abs(search_cell->map_cell->i - end_point.first) + abs(search_cell->map_cell->j - end_point.second);
-    return 0;
+    return abs(search_cell->map_cell->i - end_point.first) + abs(search_cell->map_cell->j - end_point.second);
+    // return 0;
 }
 
 int Astar_search(const string input_file, int &step_nums, string &way)
@@ -239,6 +239,7 @@ int Astar_search(const string input_file, int &step_nums, string &way)
         }
         if(current_cell->t == 0) 
         {
+            close_list[make_tuple(current_cell->map_cell->i, current_cell->map_cell->j, current_cell->t)] = current_cell;
             continue;
         }
         vector<pair<int, int>> directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
@@ -370,6 +371,6 @@ int main(int argc, char *argv[])
     }
     // cout << endl;
     auto end_time = clock();
-    cout << "time: " << (double)(end_time-begin_time) / CLOCKS_PER_SEC << endl;
+    // cout << "time: " << (double)(end_time-begin_time) / CLOCKS_PER_SEC << endl;
     return 0;
 }
