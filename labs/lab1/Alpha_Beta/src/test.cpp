@@ -4,6 +4,28 @@
 
 using namespace ChineseChess;
 
+int checkRepeatNode(GameTreeNode* node, std::vector<GameTreeNode*> history) {
+    for(int i = 0; i < history.size(); i++) {
+        auto n = history[i];
+        if(node->getPieceChar() != n->getPieceChar()) {
+            continue;
+        }
+        auto node_pieces = node->getBoardClass().getChessPiece();
+        auto n_pieces = n->getBoardClass().getChessPiece();
+        auto same = true;
+        for(int j = 0; j < node_pieces.size(); j++) {
+            if(node_pieces[j].name != n_pieces[j].name || node_pieces[j].color != n_pieces[j].color || node_pieces[j].init_x != n_pieces[j].init_x || node_pieces[j].init_y != n_pieces[j].init_y) {
+                same = false;
+                break;
+            }
+        }
+        if(same) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 //博弈树搜索，depth为搜索深度
 int alphaBeta(GameTreeNode &node, int alpha, int beta, int depth, bool isMaximizer) {
     if (depth == 0) {
@@ -17,6 +39,15 @@ int alphaBeta(GameTreeNode &node, int alpha, int beta, int depth, bool isMaximiz
     if(Jiang_alive == -1) {
         return std::numeric_limits<int>::min()+1;
     }
+    auto meet = node.checkJiangMeet();
+    if(meet) {
+        if(isMaximizer) {
+            return std::numeric_limits<int>::max()-1;
+        }
+        else {
+            return std::numeric_limits<int>::min()+1;
+        }
+    }
     //TODO alpha-beta剪枝过程
     if (isMaximizer) {
         int maxEval = std::numeric_limits<int>::min();
@@ -27,6 +58,7 @@ int alphaBeta(GameTreeNode &node, int alpha, int beta, int depth, bool isMaximiz
             int eval = alphaBeta(*new_node, alpha, beta, depth - 1, false);
             delete new_node;
             if(eval > maxEval){
+                moves[i].score = eval;
                 node.setBestMove(moves[i]);
             }
             maxEval = std::max(maxEval, eval);
@@ -45,6 +77,7 @@ int alphaBeta(GameTreeNode &node, int alpha, int beta, int depth, bool isMaximiz
             int eval = alphaBeta(*new_node, alpha, beta, depth - 1, true);
             delete new_node;
             if(eval < minEval){
+                moves[i].score = eval;
                 node.setBestMove(moves[i]);
             }
             minEval = std::min(minEval, eval);
@@ -59,9 +92,12 @@ int alphaBeta(GameTreeNode &node, int alpha, int beta, int depth, bool isMaximiz
 }
 
 int main() {
-    auto depth = 4;
+    auto depth = 5;
+    auto max_steps = 30;
     auto begin_time = clock();
+    auto total_step = 0;
     for(int x = 1; x <= 10; x++) {
+        // std::cout << "Case " << x << std::endl;
         std::ifstream file("../input/"+std::to_string(x)+".txt");
         std::vector<std::vector<char>> board;
 
@@ -83,39 +119,68 @@ int main() {
         GameTreeNode root(true, board, std::numeric_limits<int>::min());
 
         //TODO
-        std::cout << "Case " << x << std::endl;
-        std::cout << "best score: " << alphaBeta(root, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), depth, true) << std::endl;
-        std::cout << "best move: " << root.getBestMove().init_x << " " << root.getBestMove().init_y << "->" << root.getBestMove().next_x << " " << root.getBestMove().next_y << std::endl;
+        std::ofstream out("../output/output_"+std::to_string(x)+".txt");
+        if(!out.is_open()) {
+            std::cout << "open file failed" << std::endl;
+            continue;
+        }
+        auto score = 0;
+        auto node = &root;
+        auto steps = 0;
+        std::vector<GameTreeNode*> red_history;
+        std::vector<GameTreeNode*> black_history;
+        while(score < std::numeric_limits<int>::max()-1 && score > std::numeric_limits<int>::min()+1 && steps < max_steps) {
+            // 红方行动
+            auto repeat_num = checkRepeatNode(node, red_history);
+            if(repeat_num != -1) {
+                auto best_move = red_history[repeat_num]->getBestMove();
+                if(best_move.score > 0) {
+                    node->removeMove(true, best_move);
+                }
+            }
+            alphaBeta(*node, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), depth, true);
+            red_history.push_back(node);
+            total_step++;
+            auto board = node->getBoardClass().getBoard();
+            auto best_move = node->getBestMove();
+            auto piece_char = board[best_move.init_y][best_move.init_x];
+            out << piece_char << " (" << best_move.init_x << "," << 9-best_move.init_y << ") (" << best_move.next_x << "," << 9-best_move.next_y << ")" << std::endl;
+            steps++;
+            auto next_node = node->updateBoard(best_move);
+            score = next_node->getEvaluationScore();
+            if(score >= std::numeric_limits<int>::max()-1 || score <= std::numeric_limits<int>::min()+1) {
+                break;
+            }
+            // 黑方行动
+            repeat_num = checkRepeatNode(next_node, black_history);
+            if(repeat_num != -1) {
+                auto best_move = black_history[repeat_num]->getBestMove();
+                if(best_move.score < 0) {
+                    next_node->removeMove(false, best_move);
+                }
+            }
+            alphaBeta(*next_node, std::numeric_limits<int>::min(), std::numeric_limits<int>::max(), depth, false);
+            black_history.push_back(next_node);
+            total_step++;
+            board = next_node->getBoardClass().getBoard();
+            best_move = next_node->getBestMove();
+            piece_char = board[best_move.init_y][best_move.init_x];
+            out << piece_char << " (" << best_move.init_x << "," << 9-best_move.init_y << ") (" << best_move.next_x << "," << 9-best_move.next_y << ")" << std::endl;
+            node = next_node->updateBoard(best_move);
+            score = node->getEvaluationScore();
+            steps++;
+        }
+        for(auto n : red_history) {
+            if(n != &root)
+                delete n;
+        }
+        for(auto n : black_history) {
+            if(n != &root)
+                delete n;
+        }
+        out.close();
     }
     auto end_time = clock();
-    std::cout << "time: " << (double)(end_time - begin_time) / CLOCKS_PER_SEC << std::endl;
-    
-
-
-    //代码测试
-    // ChessBoard _board = root.getBoardClass();
-    // std::vector<std::vector<char>> cur_board = _board.getBoard();
-
-    // for (int i = 0; i < cur_board.size(); i++) {
-    //     for (int j = 0; j < cur_board[0].size(); j++) {
-    //         std::cout << cur_board[i][j];
-    //     }
-    //     std::cout << std::endl;
-    // }
-
-    // std::vector<Move> red_moves = _board.getMoves(true);
-    // std::vector<Move> black_moves = _board.getMoves(false);
-
-    // for (int i = 0; i < red_moves.size(); i++) {
-    //     std::cout << "init: " << red_moves[i].init_x <<  " " << red_moves[i].init_y << std::endl;
-    //     std::cout << "next: " << red_moves[i].next_x <<  " " << red_moves[i].next_y << std::endl;
-    //     std::cout << "score " << red_moves[i].score << std::endl;
-    // }
-    // for (int i = 0; i < black_moves.size(); i++) {
-    //     std::cout << "init: " << black_moves[i].init_x <<  " " << black_moves[i].init_y << std::endl;
-    //     std::cout << "next: " << black_moves[i].next_x <<  " " << black_moves[i].next_y << std::endl;
-    //     std::cout << "score " << black_moves[i].score << std::endl;
-    // }
-
+    // std::cout << "average step time: " << (double)(end_time - begin_time) / CLOCKS_PER_SEC / total_step << std::endl;
     return 0;
 }
