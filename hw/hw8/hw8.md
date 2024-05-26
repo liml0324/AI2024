@@ -23,3 +23,40 @@ $$
     w &= (X^TX+\lambda D)^{-1}X^Ty
 \end{align*}
 $$
+
+## 3.
+### (1)
+显然$K_{i,j} = K(x_i, x_j) = K(x_j, x_i) = K_{j,i}$，因此是对称矩阵
+
+### (2)
+$$
+\begin{align*}
+    K &= (\phi(x_1), \phi(x_2), \cdots, \phi(x_n))^T(\phi(x_1), \phi(x_2), \cdots, \phi(x_n)) \\
+    z^TKz &= z^T(\phi(x_1), \phi(x_2), \cdots, \phi(x_n))^T(\phi(x_1), \phi(x_2), \cdots, \phi(x_n))z \\
+    &= ((\phi(x_1), \phi(x_2), \cdots, \phi(x_n))z)^T(\phi(x_1), \phi(x_2), \cdots, \phi(x_n))z \\
+    &= (\sum_{i=1}^n z_i\phi(x_i))^T(\sum_{i=1}^n z_i\phi(x_i)) \\
+    &= (\sum_{i=1}^n z_i\phi(x_i))^2 \\
+    &\ge 0
+\end{align*}
+$$
+
+## 4.
+
+
+## 5.
+$$
+\begin{align*}
+    \frac{\partial}{\partial w_j}L_{CE}(w,b) &= -\frac{\partial}{\partial w_j}[y\log\sigma(w^Tx+b)+(1-y)\log(1-\sigma(w^Tx+b))] \\
+    &= -\frac{\partial}{\partial w_j}[y\log\sigma(\Sigma w_ix_i+b)+(1-y)\log(1-\sigma(\Sigma w_ix_i+b))] \\
+    &= -y\frac{1}{\sigma(\Sigma w_ix_i+b)\ln2}\frac{\partial}{\partial w_j}\sigma(\Sigma w_ix_i+b)+(1-y)\frac{1}{(1-\sigma(\Sigma w_ix_i+b))\ln2}\frac{\partial}{\partial w_j}\sigma(\Sigma w_ix_i+b) \\
+    &= x_j[(1-y)\frac{1}{(1-\sigma(w^Tx+b))\ln2}-y\frac{1}{\sigma(w^Tx+b)\ln2}]\sigma(w^Tx+b)(1-\sigma(w^Tx+b))
+\end{align*}
+$$
+
+## 6.
+一定会收敛。证明如下：
+首先证明K-means算法的Los在迭代过程中是单调递减的。分别考虑K-means算法的两个步骤：
+- 对于固定的聚类中心，优化聚类结果：$min_{C(1), \cdots, C(n)}Loss(\mu, C)$，此时由于取最小值，因此Loss不会增加。
+- 对于固定的聚类结果，优化聚类中心：$min_{\mu(1), \cdots, \mu(k)}Loss(\mu, C)$，此时同样由于取最小值，因此Loss不会增加。
+
+因此，K-means算法的Loss在迭代过程中是单调递减的，且Loss有下界（大于等于0），因此K-means算法一定会收敛。
