@@ -278,7 +278,7 @@ int Astar_search(const string input_file, int &step_nums, string &way)
                         temp->h = next_cell->h;
                         open_list.update(temp);
                     }
-                    delete[] next_cell;
+                    delete next_cell;
                 }
                 else {
                     temp = close_list[make_tuple(new_i, new_j, new_t)];
@@ -290,7 +290,7 @@ int Astar_search(const string input_file, int &step_nums, string &way)
                         open_list.push(temp);
                         close_list.erase(make_tuple(new_i, new_j, new_t));
                     }
-                    delete[] next_cell;
+                    delete next_cell;
                 }
             }
         }
@@ -320,7 +320,7 @@ int Astar_search(const string input_file, int &step_nums, string &way)
     {
         auto temp = open_list.top();
         open_list.pop();
-        delete[] temp;
+        delete temp;
     }
     for(int i = 0; i < M; i++)
     {
@@ -332,7 +332,7 @@ int Astar_search(const string input_file, int &step_nums, string &way)
     // {
     //     delete[] close_list[i];
     // }
-    delete[] search_cell;
+    delete search_cell;
     return times;
 }
 
