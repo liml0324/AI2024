@@ -138,7 +138,7 @@ if __name__=='__main__':
     pca = PCA(n_components=2).fit(data)
     data_pca = pca.transform(data)
 
-    kmeans = KMeans(n_clusters=7, max_iter=10).fit(data_pca)
+    kmeans = KMeans(n_clusters=7, max_iter=100).fit(data_pca)
     clusters = kmeans.predict(data_pca)
 
     # plot the data
