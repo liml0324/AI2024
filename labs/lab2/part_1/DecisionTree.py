@@ -4,8 +4,8 @@ from sklearn.preprocessing import LabelEncoder
 import numpy as np 
 import pandas as pd 
 
-continue_features = ['Age', 'Height', 'Weight', 'NCP', 'CH2O', 'FAF', ]
-discrete_features = ['Gender', 'CALC', 'FAVC', 'FCVC', 'SCC', 'SMOKE', 'family_history_with_overweight', 'TUE', 'CAEC', 'MTRANS']
+continue_features = ['Age', 'Height', 'Weight', 'NCP', 'CH2O', 'FAF', 'TUE', 'FCVC', ]
+discrete_features = ['Gender', 'CALC', 'FAVC', 'SCC', 'SMOKE', 'family_history_with_overweight', 'CAEC', 'MTRANS']
 discrete_features_value_range = {}
 split_threshold = 16    # if the number of samples in a node is less than split_threshold, stop split
 
@@ -48,9 +48,9 @@ def tree_generate(X, y, A):
     for feature in A:
         if feature in continue_features:
             # split the feature into two parts
-            for threshold in np.unique(X[feature]):
-                y_left = y[X[feature] <= threshold]
-                y_right = y[X[feature] > threshold]
+            for threshold in np.unique(X[feature].values):
+                y_left = y[X[feature].values <= threshold]
+                y_right = y[X[feature].values > threshold]
                 if y_right.size == 0 or y_left.size == 0:
                     continue
                 ent_left = entropy(y_left)
@@ -63,7 +63,7 @@ def tree_generate(X, y, A):
         else:
             ent_gain = ent_X
             for value in discrete_features_value_range[feature]:
-                y_sub = y[X[feature] == value]
+                y_sub = y[X[feature].values == value]
                 if y_sub.size == 0:
                     continue
                 ent_gain -= len(y_sub) * entropy(y_sub) / len(y)
@@ -102,6 +102,7 @@ class DecisionTreeClassifier:
         # y: [n_samples_train, ],
         # TODO: implement decision tree algorithm to train the model
         A = [col.strip() for col in X.columns]
+        # A = ['Height', 'Weight',]
         self.tree = tree_generate(X, y, A)
 
     def predict(self, X):
@@ -113,20 +114,20 @@ class DecisionTreeClassifier:
             row = X.iloc[i]
             node = self.tree
             while len(node.children) > 0:
-                print(node.feature_index)
                 if node.feature_index in continue_features:
-                    if row[node.feature_index] <= node.threshold[0]:
+                    if X[node.feature_index].iloc[i] <= node.threshold[0]:
                         node = node.children[0]
                     else:
                         node = node.children[1]
                 else:
                     for j in range(len(node.threshold)):
-                        # print(X[node.feature_index], i)
-                        if row[node.feature_index] == node.threshold[j]:
+                        # print(node.feature_index, X[node.feature_index].values)
+                        # print(discrete_features_value_range[node.feature_index])
+                        if X[node.feature_index].iloc[i] == node.threshold[j]:
                             node = node.children[j]
                             break
             y[i] = node.predicted_class
-            print("finished", i)
+            # print("finished", i)
         return y
 
 def load_data(datapath:str='./data/ObesityDataSet_raw_and_data_sinthetic.csv'):
@@ -140,8 +141,10 @@ def load_data(datapath:str='./data/ObesityDataSet_raw_and_data_sinthetic.csv'):
     labelencoder = LabelEncoder()
     for col in discrete_features:
         X[col] = labelencoder.fit(X[col]).transform(X[col])
-        discrete_features_value_range[col] = np.unique(X[col])
+        # X[col] = X[col].astype(int)
+        discrete_features_value_range[col] = np.unique(X[col].values)
     y = labelencoder.fit(y).fit_transform(y)
+        
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -151,18 +154,6 @@ if __name__=="__main__":
     X_train, X_test, y_train, y_test = load_data('./data/ObesityDataSet_raw_and_data_sinthetic.csv')
     clf = DecisionTreeClassifier()
     clf.fit(X_train, y_train)
-    # print(X_test['TUE'][0])
     
-    # y_pred = clf.predict(X_test)
-    # print(accuracy(y_test, y_pred))
-    tree_depth = 0
-    def get_tree_depth(node, depth):
-        global tree_depth
-        if len(node.children) == 0:
-            if depth > tree_depth:
-                tree_depth = depth
-            return
-        for child in node.children:
-            get_tree_depth(child, depth + 1)
-    get_tree_depth(clf.tree, 0)
-    print(tree_depth)
+    y_pred = clf.predict(X_test)
+    print(accuracy(y_test, y_pred))
