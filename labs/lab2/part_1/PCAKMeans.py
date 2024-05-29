@@ -26,11 +26,11 @@ class PCA:
         # 进行中心化
         X = X - np.mean(X, axis=0)
         # 计算协方差矩阵
-        cov = np.dot(X.T, X) / (m - 1)  # 这里X是m*n维，cov是n*n维
+        cov = np.dot(X, X.T) / (m-1)  # 这里X是m*n维，cov是m*m维
         # 计算特征值和特征向量
         eig_vals, eig_vecs = np.linalg.eig(cov)
         # 对特征值进行排序
-        eig_pairs = [(np.abs(eig_vals[i]), eig_vecs[:, i]) for i in range(n)]
+        eig_pairs = [(np.abs(eig_vals[i]), eig_vecs[:, i]) for i in range(m)]
         eig_pairs.sort(key=lambda x: x[0], reverse=True)
         # 选取前k个特征向量
         k_eig_vecs = np.array([ele[1] for ele in eig_pairs[:self.n_components]])
@@ -42,17 +42,18 @@ class PCA:
     def transform(self, X:np.ndarray):
         # X: [n_samples, n_features]
         # X_reduced = np.zeros((X.shape[0], self.n_components))
-        X_reduced = np.dot(X, self.W)
+        # X_reduced = np.dot(X, self.W)
 
         # TODO: transform the data to low dimension
-        return X_reduced
+        return self.W
 
 class KMeans:
-    def __init__(self, n_clusters:int=3, max_iter:int=1000) -> None:
+    def __init__(self, n_clusters:int=3, max_iter:int=1000, kernel:str="rbf") -> None:
         self.n_clusters = n_clusters
         self.max_iter = max_iter
         self.centers = None
         self.labels = None
+        self.kernel_f = get_kernel_function(kernel)
 
     # Randomly initialize the centers
     def initialize_centers(self, points):
@@ -138,7 +139,7 @@ if __name__=='__main__':
     pca = PCA(n_components=2).fit(data)
     data_pca = pca.transform(data)
 
-    kmeans = KMeans(n_clusters=7, max_iter=10).fit(data_pca)
+    kmeans = KMeans(n_clusters=7, max_iter=100).fit(data_pca)
     clusters = kmeans.predict(data_pca)
 
     # plot the data
