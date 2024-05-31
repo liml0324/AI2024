@@ -149,8 +149,8 @@ class MinHeap {
 // TODO: 定义启发式函数
 int Heuristic_Funtion(Map_Cell **Map, Search_Cell *search_cell, pair<int, int> start_point, pair<int, int> end_point)
 {
-    // return abs(search_cell->map_cell->i - end_point.first) + abs(search_cell->map_cell->j - end_point.second);
-    return 0;
+    return abs(search_cell->map_cell->i - end_point.first) + abs(search_cell->map_cell->j - end_point.second);
+    // return 0;
 }
 
 int Astar_search(const string input_file, int &step_nums, string &way)
@@ -239,6 +239,7 @@ int Astar_search(const string input_file, int &step_nums, string &way)
         }
         if(current_cell->t == 0) 
         {
+            close_list[make_tuple(current_cell->map_cell->i, current_cell->map_cell->j, current_cell->t)] = current_cell;
             continue;
         }
         vector<pair<int, int>> directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
@@ -277,7 +278,7 @@ int Astar_search(const string input_file, int &step_nums, string &way)
                         temp->h = next_cell->h;
                         open_list.update(temp);
                     }
-                    delete[] next_cell;
+                    delete next_cell;
                 }
                 else {
                     temp = close_list[make_tuple(new_i, new_j, new_t)];
@@ -289,7 +290,7 @@ int Astar_search(const string input_file, int &step_nums, string &way)
                         open_list.push(temp);
                         close_list.erase(make_tuple(new_i, new_j, new_t));
                     }
-                    delete[] next_cell;
+                    delete next_cell;
                 }
             }
         }
@@ -319,7 +320,7 @@ int Astar_search(const string input_file, int &step_nums, string &way)
     {
         auto temp = open_list.top();
         open_list.pop();
-        delete[] temp;
+        delete temp;
     }
     for(int i = 0; i < M; i++)
     {
@@ -331,7 +332,7 @@ int Astar_search(const string input_file, int &step_nums, string &way)
     // {
     //     delete[] close_list[i];
     // }
-    delete[] search_cell;
+    delete search_cell;
     return times;
 }
 
@@ -370,6 +371,6 @@ int main(int argc, char *argv[])
     }
     // cout << endl;
     auto end_time = clock();
-    cout << "time: " << (double)(end_time-begin_time) / CLOCKS_PER_SEC << endl;
+    // cout << "time: " << (double)(end_time-begin_time) / CLOCKS_PER_SEC << endl;
     return 0;
 }
