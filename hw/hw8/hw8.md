@@ -41,7 +41,27 @@ $$
 $$
 
 ## 4.
-
+即需求解：
+$$
+\begin{align*}
+    &min_{w,b}\ \  \frac{1}{2}||w||^2 \\
+    &s.t. \ \ \forall i, y_i(w^Tx_i+b) \ge 1    
+\end{align*}
+$$
+这一问题可以通过拉格朗日乘子法，得到其对偶问题：
+$$
+\begin{align*}
+    &max_{\alpha}\ \ \sum_{i=1}^n \alpha_i - \frac{1}{2} \sum_{i=1}^n \sum_{j=1}^n \alpha_i \alpha_j y_i y_j x_i^Tx_j \\
+    &s.t. \ \ \sum_{i=1}^n \alpha_i y_i = 0 \\
+    &\alpha_i \ge 0, \ i=1, 2, \cdots, n
+\end{align*}
+$$
+将数据点代入求解，得到$w_1 = -1, w_2 = 2, b = -2$，因此最大间隔分离超平面的解析式为：
+$$(-1, 2)\textbf{x}-2 = 0$$
+支持向量为：$\textbf{x}_1, \textbf{x}_3, \textbf{x}_5$
+图像如图所示（两个margin有点偏差）：
+![](./Figure_1.png)
+其中红色的点是支持向量。
 
 ## 5.
 $$
