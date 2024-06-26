@@ -10,6 +10,22 @@ def get_kernel_function(kernel:str):
         def rbf(x1:np.ndarray, x2:np.ndarray):
             return np.exp(-np.linalg.norm(x1 - x2) ** 2)
         return rbf
+    if kernel == 'linear':
+        def linear(x1:np.ndarray, x2:np.ndarray):
+            return x1.dot(x2)
+        return linear
+    if kernel == 'poly':
+        def poly(x1:np.ndarray, x2:np.ndarray):
+            return (x1.dot(x2) + 1) ** 2
+        return poly
+    if kernel == 'sigmoid':
+        def sigmoid(x1:np.ndarray, x2:np.ndarray):
+            return np.tanh(x1.dot(x2) + 1)
+        return sigmoid
+    if kernel == 'cosine':
+        def cosine(x1:np.ndarray, x2:np.ndarray):
+            return x1.dot(x2) / (np.linalg.norm(x1) * np.linalg.norm(x2))
+        return cosine
     return None
 
 class PCA:
@@ -38,8 +54,6 @@ class PCA:
         
         # 选取前k个特征向量
         self.alphas = np.column_stack([eig_pairs[i][1] for i in range(self.n_components)])
-        # 计算特征值的平方根的倒数，用于归一化
-        self.lambdas = np.array([eig_pairs[i][0] for i in range(self.n_components)])
         
         return self
         
@@ -48,15 +62,11 @@ class PCA:
         # X: [n_samples, n_features]
         # X_reduced = np.zeros((X.shape[0], self.n_components))
         # TODO: transform the data to low dimension
-        m = X.shape[0]
-        K = np.zeros((m, self.alphas.shape[0]))
-        for i in range(m):
-            for j in range(self.alphas.shape[0]):
-                K[i, j] = self.kernel_f(X[i], self.X_fit[j])
-        
-        # 使用特征向量和特征值将数据映射到低维空间
-        X_reduced = np.dot(K, self.alphas / self.lambdas)
-        
+        X_reduced = np.zeros((X.shape[0], self.n_components))
+        # 计算降维后的数据
+        for i in range(X.shape[0]):
+            for j in range(self.n_components):
+                X_reduced[i, j] = np.sum(self.alphas[:, j] * np.array([self.kernel_f(X[i], X_k) for X_k in X]))
         return X_reduced
 
         
@@ -149,10 +159,10 @@ def load_data():
 
 if __name__=='__main__':
     words, data = load_data()
-    pca = PCA(n_components=2).fit(data)
+    pca = PCA(n_components=2, kernel='cosine').fit(data)
     data_pca = pca.transform(data)
 
-    kmeans = KMeans(n_clusters=7, max_iter=100).fit(data_pca)
+    kmeans = KMeans(n_clusters=7).fit(data_pca)
     clusters = kmeans.predict(data_pca)
 
     # plot the data
@@ -161,5 +171,5 @@ if __name__=='__main__':
     plt.scatter(data_pca[:, 0], data_pca[:, 1], c=clusters)
     for i in range(len(words)):
         plt.annotate(words[i], data_pca[i, :]) 
-    plt.title("Your student ID")
+    plt.title("PB21111639")
     plt.savefig("PCA_KMeans.png")

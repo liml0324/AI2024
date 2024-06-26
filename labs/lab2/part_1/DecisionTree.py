@@ -48,7 +48,10 @@ def tree_generate(X, y, A):
     for feature in A:
         if feature in continue_features:
             # split the feature into two parts
-            for threshold in np.unique(X[feature].values):
+            thresholds = np.unique(X[feature].values)
+            thresholds.sort()
+            for i in range(len(thresholds) - 1):
+                threshold = (thresholds[i] + thresholds[i + 1]) / 2
                 y_left = y[X[feature].values <= threshold]
                 y_right = y[X[feature].values > threshold]
                 if y_right.size == 0 or y_left.size == 0:
@@ -81,7 +84,7 @@ def tree_generate(X, y, A):
         new_A = [col for col in A if col != best_feature]
         # new_A.remove(best_feature)
         most_class = np.argmax(np.bincount(y))
-        for value in np.unique(X[best_feature]):
+        for value in discrete_features_value_range[best_feature]:
             node.threshold.append(value)
             if(len(y[X[best_feature] == value])) == 0:
                 child = DecisionTreeNode()
@@ -103,6 +106,8 @@ class DecisionTreeClassifier:
         # TODO: implement decision tree algorithm to train the model
         A = [col.strip() for col in X.columns]
         # A = ['Height', 'Weight',]
+        A.remove('Height')
+        A.remove('Weight')
         self.tree = tree_generate(X, y, A)
 
     def predict(self, X):
