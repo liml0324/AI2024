@@ -19,33 +19,47 @@ class PCA:
         # ...
 
     def fit(self, X:np.ndarray):
-        # X: [n_samples, n_features]
-        # TODO: implement PCA algorithm
-        m = X.shape[0]  # m是样本数
-        n = X.shape[1]  # n是特征数
-        # 进行中心化
-        X = X - np.mean(X, axis=0)
-        # 计算协方差矩阵
-        cov = np.dot(X.T, X) / (m - 1)  # 这里X是m*n维，cov是n*n维
+        m = X.shape[0]  # 样本数
+        # 计算核矩阵
+        K = np.zeros((m, m))
+        for i in range(m):
+            for j in range(m):
+                K[i, j] = self.kernel_f(X[i], X[j])
+        
+        # 中心化核矩阵
+        one_n = np.ones((m, m)) / m
+        K = K - one_n.dot(K) - K.dot(one_n) + one_n.dot(K).dot(one_n)
+        
         # 计算特征值和特征向量
-        eig_vals, eig_vecs = np.linalg.eig(cov)
+        eig_vals, eig_vecs = np.linalg.eigh(K)
         # 对特征值进行排序
-        eig_pairs = [(np.abs(eig_vals[i]), eig_vecs[:, i]) for i in range(n)]
+        eig_pairs = [(np.abs(eig_vals[i]), eig_vecs[:, i]) for i in range(m)]
         eig_pairs.sort(key=lambda x: x[0], reverse=True)
+        
         # 选取前k个特征向量
-        k_eig_vecs = np.array([ele[1] for ele in eig_pairs[:self.n_components]])
-        # 得到投影矩阵
-        self.W = k_eig_vecs.T
+        self.alphas = np.column_stack([eig_pairs[i][1] for i in range(self.n_components)])
+        # 计算特征值的平方根的倒数，用于归一化
+        self.lambdas = np.array([eig_pairs[i][0] for i in range(self.n_components)])
+        
         return self
         
 
     def transform(self, X:np.ndarray):
         # X: [n_samples, n_features]
         # X_reduced = np.zeros((X.shape[0], self.n_components))
-        X_reduced = np.dot(X, self.W)
-
         # TODO: transform the data to low dimension
+        m = X.shape[0]
+        K = np.zeros((m, self.alphas.shape[0]))
+        for i in range(m):
+            for j in range(self.alphas.shape[0]):
+                K[i, j] = self.kernel_f(X[i], self.X_fit[j])
+        
+        # 使用特征向量和特征值将数据映射到低维空间
+        X_reduced = np.dot(K, self.alphas / self.lambdas)
+        
         return X_reduced
+
+        
 
 class KMeans:
     def __init__(self, n_clusters:int=3, max_iter:int=1000) -> None:
@@ -130,7 +144,7 @@ def load_data():
     for w in words:
         vectors.append(w2v[w].reshape(1, 300))
     vectors = np.concatenate(vectors, axis=0)
-    print(len(words))
+    # print(len(words))
     return words, vectors
 
 if __name__=='__main__':

@@ -24,9 +24,11 @@ class Tokenizer:
         TODO:
         """
         unique_chars = list(set(self.dataset))
+        unique_chars.sort()
         for i, char in enumerate(unique_chars):
-            self.char2index[char] = i
-            self.index2char[i] = char
+            self.char2index[char] = i+1
+            self.index2char[i+1] = char
+        self.index2char[0] = " "
 
     def encode(
         self,
@@ -40,7 +42,9 @@ class Tokenizer:
 
         注意: 为了后续实验方便，输出Tensor的数据类型dtype 为torch.long。
         """
-        return torch.tensor([self.char2index[char] for char in sentence],dtype=torch.long)
+        sentence = [self.char2index[char] for char in sentence]
+        sentence = [0] + sentence
+        return torch.tensor(sentence, dtype=torch.long, device=device)
 
     def decode(
         self,
@@ -52,7 +56,9 @@ class Tokenizer:
         input : Tensor([0,1,2,3]) 
         output : "ABCD"
         """
-        return "".join([self.index2char[i] for i in tokens.tolist()])
+        sentence = [self.index2char[index] for index in tokens]
+        sentence = sentence[1:]
+        return "".join(sentence)
 
 class ShakespeareDataset(Dataset):
     def __init__(self, filepath, tokenizer, chunk_size):
@@ -235,6 +241,7 @@ class SparseMoETransformer(nn.Module):
         self.position_embedding = nn.Embedding(seq_len, embed_size)
         self.blocks = nn.ModuleList([Block(embed_size, n_heads, seq_len, num_experts, active_experts) for _ in range(n_layers)])
         self.norm = nn.LayerNorm(embed_size)
+        self.norm2 = nn.LayerNorm(vocab_size)
         self.fc = nn.Linear(embed_size, vocab_size)
         self.seq_len = seq_len
         self.vocab_size = vocab_size
@@ -256,6 +263,7 @@ class SparseMoETransformer(nn.Module):
 
         # logits:(batch_size, seq_len, vocab_size)
         logits = self.fc(attens)
+        logits = self.norm2(logits)
         logits = F.log_softmax(logits, dim=-1)
 
         # compute the loss
@@ -274,6 +282,8 @@ class SparseMoETransformer(nn.Module):
         inputs = inputs.to(device)
         if inputs.size(1) > self.seq_len:
             inputs = inputs[:, :self.seq_len]
+        elif inputs.size(1) < self.seq_len:
+            inputs = F.pad(inputs, (self.seq_len - inputs.size(1), 0, 0, 0))
         generated = inputs
         for _ in range(max_new_tokens):
             if generated.size(1) > self.seq_len:
@@ -292,7 +302,7 @@ def train(model, dataloader, epoch, device):
     # 在本实验中你可以将 Optimizer 视作黑盒，只需要知道如何使用即可。
     # 找一个合适的 Optimizer。对不同的任务，模型，最适合的优化器是不一样的，你可以先尝试最常用的 Adam，如果有兴趣可以看看其他的优化器。
     # docs see: https://pytorch.org/docs/stable/optim.html 
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5*1e-4)
     model.train()
     total_loss = 0
     from tqdm import tqdm
@@ -324,18 +334,9 @@ def validate(model, dataloader, epoch, device):
         total_loss += loss.item()
     return total_loss / len(dataloader)
 
-dataloader = create_dataloader('input.txt', tokenizer, chunk_size=20, batch_size=512)
-model = SparseMoETransformer(vocab_size=len(tokenizer.char2index), seq_len=20, embed_size=64, n_layers=3, n_heads=8, num_experts=8, active_experts=2).to(device)
+dataloader = create_dataloader('input.txt', tokenizer, chunk_size=40, batch_size=512)
+model = SparseMoETransformer(vocab_size=len(tokenizer.char2index)+1, seq_len=40, embed_size=64, n_layers=3, n_heads=8, num_experts=8, active_experts=2).to(device)
 
-
-# 训练模型
-def run(model, train_dataloader, valid_dataloader, device, epochs=10):
-    for epoch in range(epochs):
-        train_loss = train(model, train_dataloader, epoch, device)
-        valid_loss = validate(model, valid_dataloader, epoch, device)
-        print(f'Epoch {epoch} Train Loss: {train_loss}, Valid Loss: {valid_loss}')
-
-#TODO: 用 matplotlib plot 训练过程中的 loss 变化
 import matplotlib.pyplot as plt
 def plot_loss(train_loss, valid_loss):
     plt.plot(train_loss, label='train')
@@ -343,13 +344,27 @@ def plot_loss(train_loss, valid_loss):
     plt.legend()
     plt.show()
 
+# 训练模型
+def run(model, train_dataloader, valid_dataloader, device, epochs=10):
+    train_loss_list = []
+    valid_loss_list = []
+    for epoch in range(epochs):
+        train_loss = train(model, train_dataloader, epoch, device)
+        valid_loss = validate(model, valid_dataloader, epoch, device)
+        train_loss_list.append(train_loss)
+        valid_loss_list.append(valid_loss)
+        print(f'Epoch {epoch} Train Loss: {train_loss}, Valid Loss: {valid_loss}')
+    plot_loss(train_loss_list, valid_loss_list)
+
+#TODO: 用 matplotlib plot 训练过程中的 loss 变化
+
 train_dataloader, val_dataloader = dataloader
 
-run(model, train_dataloader, val_dataloader, device, epochs=1)
+run(model, train_dataloader, val_dataloader, device, epochs=5)
 
 # 保存模型
 torch.save(model.state_dict(), 'model.pth')
 
 model.load_state_dict(torch.load('model.pth'))
 
-print(tokenizer.decode(model.generate("I could pick my lance",max_new_tokens=100)[0].tolist()))
+print(tokenizer.decode(model.generate("I could pick my lance",max_new_tokens=100)[0].tolist()).strip())
