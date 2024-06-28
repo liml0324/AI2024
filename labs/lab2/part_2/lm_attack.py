@@ -87,13 +87,13 @@ def token_gradients(model, input_ids, input_slice, target_slice, loss_slice):
     # vocab_size 是词表大小，思考词表大小对应模型的什么矩阵的哪一维
     input_slice_len = len(input_ids[input_slice])
     one_hot = torch.zeros((input_slice_len, embed_weights.shape[0]), device=device, requires_grad=True)
-    # print(one_hot.grad)
     # TODO: 2. 将 one_hot 中对应的 token_id 的位置置为 1
     one_hot = one_hot.scatter(1, input_ids[input_slice].unsqueeze(1), 1.0)
     one_hot.retain_grad()
 
     # TODO: 3. 将 one_hot 乘以 embedding 矩阵，得到 input_slice 的 embedding，注意我们需要梯度
     input_embeds = one_hot @ embed_weights
+    input_embeds.retain_grad()
 
     embeds = get_embeddings(model, input_ids.unsqueeze(0)).detach()
 
@@ -126,8 +126,7 @@ def sample_control(control_toks, grad, batch_size):
     original_control_toks = control_toks.unsqueeze(0).repeat(batch_size, 1)
 
     # TODO: 生成 batch_size 个新的 token 位置作为采样的位置，允许复选
-    new_token_pos = torch.randint(0, control_toks.shape[0], (batch_size, control_toks.shape[0]), device=grad.device)
-    new_token_pos = new_token_pos.type(torch.int64)
+    new_token_pos = torch.randint(0, control_toks.shape[0], (batch_size,), device=grad.device)
 
     # TODO: 利用梯度的 topk 来获取每个 token 位置上梯度最大的 topk 个 token 的索引
     # https://pytorch.org/docs/stable/generated/torch.topk.html
@@ -135,21 +134,17 @@ def sample_control(control_toks, grad, batch_size):
 
 
     # TODO: 从 top_indices 中的 new_token_pos （作为 index）随机采样一个 topk token 的索引，作为新的 token
-    for i in range(batch_size):
-        for j in range(control_toks.shape[0]):
-            # 从 topk 索引中为每个位置随机选择一个
-            random_choice = torch.randint(0, topk, (1,), device=grad.device)
-            # 确保索引方式正确
-            selected_index = top_indices[j, random_choice].item()  # 修改此处，只使用两个索引
-            if i == 0:
-                # 初始化 new_token_val
-                new_token_val = torch.tensor([selected_index], device=grad.device).unsqueeze(0)
-            else:
-                # 将选择的索引添加到 new_token_val
-                new_token_val = torch.cat((new_token_val, torch.tensor([selected_index], device=grad.device).unsqueeze(0)), dim=0)
-    # new_token_val = new_token_val.view(batch_size, -1)
-    # TODO: 得到新的 control tokens
-    new_control_toks = original_control_toks.scatter(1, new_token_pos, new_token_val)
+    # new_token_val = torch.zeros((batch_size, ), device=grad.device)
+    # for i in range(batch_size):
+    #     rand_pos = torch.randint(0, topk, (1,), device=grad.device)
+    #     new_token_val[i] = top_indices[new_token_pos[i], rand_pos]
+    rand_pos = torch.randint(0, topk, (batch_size,), device=grad.device)
+    new_token_val = top_indices[new_token_pos, rand_pos]
+    # TODO: 得到新的 control tokens，使得loss最小
+    new_control_toks = original_control_toks.clone()
+    new_control_toks[torch.arange(batch_size), new_token_pos] = new_token_val
+    # 取其中loss最小的一个
+
     
     # ==================需要实现的部分结束==================
 
@@ -244,7 +239,7 @@ def forward(*, model, input_ids, attention_mask, batch_size=512):
 
 def target_loss(logits, ids, target_slice):
     crit = nn.CrossEntropyLoss(reduction='none')
-    loss_slice = slice(target_slice.start-1, target_slice.stop-1)
+    loss_slice = slice(target_slice.start-1, min(target_slice.stop-1, logits.shape[1]-1))
     loss = crit(logits[:,loss_slice,:].transpose(1,2), ids[:,target_slice])
     return loss.mean(dim=-1)
 
@@ -254,6 +249,7 @@ def is_success(prompt):
     # 然后判断输出中是否包含 target，如果包含则返回 True，否则返回 False
     input_ids = tokenizer(prompt, add_special_tokens=False, return_tensors='pt').squeeze(0).to(device)
     output = model.generate(input_ids=input_ids, max_length=100, num_beams=5, no_repeat_ngram_size=2, early_stopping=True)
+    print(output)
     output_text = tokenizer.decode(output[0], skip_special_tokens=True)
 
     #==================需要实现的部分结束==================
