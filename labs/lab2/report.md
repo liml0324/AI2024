@@ -473,3 +473,16 @@ loss曲线：
 ![alt text](report_src/image-9.png)
 
 最后的句子不完整是因为token数达到了上限。可以看到，去掉了空行和人名后，生成的文本中也没有这些内容。
+
+## Bonus实验
+
+### 袭击语言模型
+#### 算法实现
+#### 测试结果
+搜到的后缀：
+```
+ crazy enter wise sideapsDr This!!!!!!!! repeats lam arrives! SayingParentOutsidein Tu prope Mang gran flushedPlay!!!!!!!!hadNat
+```
+![alt text](report_src/image-10.png)
+loss曲线：
+![alt text](report_src/image-11.png)
