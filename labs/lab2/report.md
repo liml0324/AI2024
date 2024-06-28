@@ -348,7 +348,8 @@ class Block(nn.Module):
         return self.norm2(x + inputs)
 
 class SparseMoETransformer(nn.Module):
-    def __init__(self, vocab_size:int, seq_len:int, embed_size:int, n_layers:int, n_heads:int, num_experts:int, active_experts:int):
+    def __init__(self, vocab_size:int, seq_len:int, embed_size:int, n_layers:int, 
+    n_heads:int, num_experts:int, active_experts:int):
         super().__init__()
         self.token_embedding = nn.Embedding(vocab_size, embed_size)
         self.position_embedding = nn.Embedding(seq_len, embed_size)
@@ -476,13 +477,106 @@ loss曲线：
 
 ## Bonus实验
 
-### 袭击语言模型
+### GCG攻击语言模型
 #### 算法实现
+**token_gradients：**
+```python
+def token_gradients(model, input_ids, input_slice, target_slice, loss_slice):
+    embed_weights = get_embedding_matrix(model)
+    # 1. 先定义一个 zero tensor，shape 为 (input_slice_len, vocab_size)
+    input_slice_len = len(input_ids[input_slice])
+    one_hot = torch.zeros((input_slice_len, embed_weights.shape[0]), device=device, requires_grad=True)
+    # 2. 将 one_hot 中对应的 token_id 的位置置为 1
+    one_hot = one_hot.scatter(1, input_ids[input_slice].unsqueeze(1), 1.0)
+    one_hot.retain_grad()
+
+    # 3. 将 one_hot 乘以 embedding 矩阵，得到 input_slice 的 embedding，注意我们需要梯度
+    input_embeds = one_hot @ embed_weights
+    input_embeds.retain_grad()
+
+    embeds = get_embeddings(model, input_ids.unsqueeze(0)).detach()
+
+    # 4. 用 input_embeds 替换 embedding 的对应部分（可以拼接），拿到 logits 之后和 target 进行 loss 计算
+
+    full_embeds = embeds.clone()
+    full_embeds[:, input_slice] = input_embeds
+    logits = model(inputs_embeds=full_embeds).logits
+    targets = input_ids[target_slice].unsqueeze(0)
+    criterion = nn.CrossEntropyLoss()
+    loss = criterion(logits[:, loss_slice].view(-1, 50257), targets.view(-1))
+    loss.backward()
+    grad = one_hot.grad.clone()
+    grad = grad / grad.norm(dim=-1, keepdim=True)
+
+    return grad
+```
+
+**sample_control:**
+```python
+def sample_control(control_toks, grad, batch_size):
+    # 拿到梯度之后，我们可以使用梯度来采样新的控制 token
+    control_toks = control_toks.to(grad.device)
+    # 重复 batch_size 次（随机采样的次数） -> (batch_size, len(control_toks))
+    original_control_toks = control_toks.unsqueeze(0).repeat(batch_size, 1)
+
+    # 生成 batch_size 个新的 token 位置作为采样的位置，允许复选
+    new_token_pos = torch.randint(0, control_toks.shape[0], (batch_size,), device=grad.device)
+
+    # 利用梯度的 topk 来获取每个 token 位置上梯度最大的 topk 个 token 的索引
+    # https://pytorch.org/docs/stable/generated/torch.topk.html
+    top_values, top_indices = grad.topk(topk, dim=-1)
+
+
+    # 从 top_indices 中的 new_token_pos （作为 index）随机采样一个 topk token 的索引，作为新的 token
+    rand_pos = torch.randint(0, topk, (batch_size,), device=grad.device)
+    new_token_val = top_indices[new_token_pos, rand_pos]
+    # TODO: 得到新的 control tokens，即用batch_size个control_toks，每一个中替换一个token，得到batch_size个新的control_toks
+    new_control_toks = original_control_toks.clone()
+    new_control_toks[torch.arange(batch_size), new_token_pos] = new_token_val
+
+    return new_control_toks
+```
+
+**is_success：**
+```python
+def is_success(prompt):
+    #==================需要你实现的部分==================
+    # TODO: 这部分需要你实现判断是否攻击成功的逻辑。用你的 prompt 进行一次推理，
+    # 然后判断输出中是否包含 target，如果包含则返回 True，否则返回 False
+    input_ids = tokenizer(prompt, return_tensors="pt").input_ids.to(device)
+    output = model.generate(input_ids, max_length=1024, pad_token_id=tokenizer.eos_token_id)
+    output_text = tokenizer.decode(output[0], skip_special_tokens=True)
+
+    #==================需要实现的部分结束==================
+    print(output_text)
+    if output_text.lower().find(target.lower()) != -1:
+        return True
+    return False
+```
+
+**定义slice：**
+```python
+adv_slice = slice(0, len(adv_prefix))
+target_slice = slice(len(adv_prefix), len(adv_prefix)+len(target))
+loss_slice = slice(len(adv_prefix), len(adv_prefix)+len(target))
+```
+
 #### 测试结果
-搜到的后缀：
+使用的参数：
+```python
+num_steps = 1000
+adv_string_init = "!"*200
+adv_prefix = adv_string_init
+batch_size = 1024
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+topk = 256
 ```
+
+搜到的prompt：
+`
  crazy enter wise sideapsDr This!!!!!!!! repeats lam arrives! SayingParentOutsidein Tu prope Mang gran flushedPlay!!!!!!!!hadNat
-```
+`
 ![alt text](report_src/image-10.png)
+
 loss曲线：
 ![alt text](report_src/image-11.png)
