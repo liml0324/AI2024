@@ -447,31 +447,117 @@ n_layers = 3
 n_heads = 8
 num_experts = 8
 active_experts = 2
-epochs = 5
+epochs = 10
 lr = 0.001
+max_new_tokens = 200
 ```
-生成得到的结果为：
+**得到的结果如下：**
+
+**loss曲线：**
+![alt text](report_src/image-13.png)
+loss曲线在逐渐下降，说明模型在训练中逐渐收敛。
+
+**生成结果：**
+输入：`I could pick my lance`
+输出：
 ```
-I could pick my lance.
+I could pick my lances
+As the season of the season of the seas.
 
-KING RICHARD II:
-The matter of the princess of the world,
-And then the way to the princely servan
+BRUTUS:
+We stand upon the strange of the world,
+I will be the sea, that thou shalt be so strange?
+
+DUCHESS OF YORK:
+A grandam's death that was the worst of
 ```
-loss曲线：
-![alt text](report_src/image-8.png)
 
-可以看到，补写得到的结果均为完整的单词，语法也还可以接受。loss曲线也在逐渐下降，说明模型在训练中逐渐收敛。
+输入：`To be or not to be, this is`
+输出：
+```
+To be or not to be, this is the worst.
 
+KING EDWARD IV:
+Why, then thou shalt not stay the words that we have done thee
+And see him and the streets of the seas,
+And there is the market-place for the world,
+That we will be the se
+```
+
+输入：`The burden of government sits heavily on my shoulders`
+输出：
+```
+The burden of government sits heavily on my shoulders.
+
+GREMIO:
+And yet I will not stay the words:
+'Tis not so much believed the season of the seas.
+
+GREMIO:
+And yet I will not stay the words:
+'Tis not so much believed the season of the seas.
+
+GREMI
+```
+
+输入：`There is nothing either good or bad`
+输出：
+```
+There is nothing either good or bad,
+And the thing that thou hast should be so sound.
+
+LADY GREY:
+The time to me that made thee to make thee with his
+conger, and the man that we have been a bark.
+
+MENENIUS:
+I will not stay the words th
+```
+
+可以看到，补写得到的结果均为完整的单词，语法也还可以接受（有一些句子不完整是因为token数达到了上限）。
+
+**去除空行与人名后训练结果：**
 上面补写出来的文本中包含空行和人名，可以在样本中去掉这些内容，再进行训练。得到的结果如下：
+
+**loss曲线：**
+![alt text](report_src/image-12.png)
+
+**生成结果：**
+这里测试时将`max_new_tokens`改为了100。训练时用的参数没变。
+输入：`I could pick my lance`
+输出：
 ```
 I could pick my lance.
-What is the state of the commons of the consuls
-With the seas of the world of the commons
-That the
+I have not the strength and son and the sea
+Whose that hath been a stranger of the world,
+That we
 ```
-loss曲线：
-![alt text](report_src/image-9.png)
+
+输入：`To be or not to be, this is`
+输出：
+```
+To be or not to be, this is a propheth!
+The state of the seat of the seat of the world,
+That we do thee that hath seen and sour
+```
+
+输入：`The burden of government sits heavily on my shoulders`
+输出：
+```
+The burden of government sits heavily on my shoulded.
+I warrant you, sir, and be the seas.
+The seasiders of the seat of the world,
+That we do thee th
+```
+
+输入：`There is nothing either good or bad`
+输出：
+```
+There is nothing either good or bad?
+And so I think, I say, then the state,
+And therein the father of the seas.
+The seasids of the seat
+```
 
 最后的句子不完整是因为token数达到了上限。可以看到，去掉了空行和人名后，生成的文本中也没有这些内容。
 
